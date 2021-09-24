@@ -56,7 +56,6 @@ import org.spongepowered.api.entity.living.player.server.ServerPlayer;
 import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.event.permission.SubjectDataUpdateEvent;
 import org.spongepowered.api.service.context.ContextCalculator;
-import org.spongepowered.api.service.permission.PermissionService;
 import org.spongepowered.api.service.permission.Subject;
 import org.spongepowered.plugin.PluginContainer;
 
@@ -81,7 +80,7 @@ public class LuckPermsService implements LPPermissionService {
     /**
      * A cached proxy of this instance
      */
-    private final PermissionService spongeProxy;
+    private final PermissionAndContextService spongeProxy;
 
     /**
      * Reference factory, used to obtain {@link LPSubjectReference}s.
@@ -142,7 +141,7 @@ public class LuckPermsService implements LPPermissionService {
     }
 
     @Override
-    public PermissionService sponge() {
+    public PermissionAndContextService sponge() {
         return this.spongeProxy;
     }
 

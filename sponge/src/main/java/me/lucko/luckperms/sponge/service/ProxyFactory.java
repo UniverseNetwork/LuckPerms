@@ -41,7 +41,6 @@ import me.lucko.luckperms.sponge.service.proxy.api8.SubjectProxy;
 import net.luckperms.api.model.data.DataType;
 
 import org.spongepowered.api.service.permission.PermissionDescription;
-import org.spongepowered.api.service.permission.PermissionService;
 import org.spongepowered.api.service.permission.SubjectCollection;
 import org.spongepowered.api.service.permission.SubjectData;
 
@@ -51,7 +50,7 @@ import org.spongepowered.api.service.permission.SubjectData;
 public final class ProxyFactory {
     private ProxyFactory() {}
 
-    public static PermissionService toSponge(LPPermissionService luckPerms) {
+    public static PermissionAndContextService toSponge(LPPermissionService luckPerms) {
         return new PermissionServiceProxy(luckPerms);
     }
 

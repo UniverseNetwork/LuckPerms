@@ -29,6 +29,7 @@ import com.google.common.collect.ImmutableSet;
 
 import me.lucko.luckperms.common.util.ImmutableCollectors;
 import me.lucko.luckperms.sponge.service.CompatibilityUtil;
+import me.lucko.luckperms.sponge.service.PermissionAndContextService;
 import me.lucko.luckperms.sponge.service.model.LPPermissionDescription;
 import me.lucko.luckperms.sponge.service.model.LPPermissionService;
 import me.lucko.luckperms.sponge.service.model.LPProxiedServiceObject;
@@ -38,9 +39,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.service.context.Context;
 import org.spongepowered.api.service.context.ContextCalculator;
-import org.spongepowered.api.service.context.ContextService;
 import org.spongepowered.api.service.permission.PermissionDescription;
-import org.spongepowered.api.service.permission.PermissionService;
 import org.spongepowered.api.service.permission.Subject;
 import org.spongepowered.api.service.permission.SubjectCollection;
 import org.spongepowered.api.service.permission.SubjectReference;
@@ -55,7 +54,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
-public final class PermissionServiceProxy implements PermissionService, ContextService, LPProxiedServiceObject {
+public final class PermissionServiceProxy implements PermissionAndContextService, LPProxiedServiceObject {
     private final LPPermissionService handle;
 
     public PermissionServiceProxy(LPPermissionService handle) {

@@ -40,8 +40,6 @@ import me.lucko.luckperms.common.plugin.AbstractLuckPermsPlugin;
 import me.lucko.luckperms.common.sender.AbstractSender;
 import me.lucko.luckperms.common.sender.DummyConsoleSender;
 import me.lucko.luckperms.common.sender.Sender;
-import me.lucko.luckperms.common.tasks.CacheHousekeepingTask;
-import me.lucko.luckperms.common.tasks.ExpireTemporaryTask;
 import me.lucko.luckperms.common.util.MoreFiles;
 import me.lucko.luckperms.sponge.calculator.SpongeCalculatorFactory;
 import me.lucko.luckperms.sponge.commands.SpongeParentCommand;
@@ -67,6 +65,7 @@ import org.spongepowered.api.command.Command;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.lifecycle.ProvideServiceEvent;
 import org.spongepowered.api.event.lifecycle.RegisterCommandEvent;
+import org.spongepowered.api.service.context.ContextService;
 import org.spongepowered.api.service.permission.PermissionService;
 import org.spongepowered.plugin.PluginContainer;
 
@@ -214,6 +213,11 @@ public class LPSpongePlugin extends AbstractLuckPermsPlugin {
         public void onPermissionServiceProvide(ProvideServiceEvent.EngineScoped<PermissionService> event) {
             event.suggest(this.service::sponge);
         }
+
+        @Listener
+        public void onContextServiceProvide(ProvideServiceEvent.EngineScoped<ContextService> event) {
+            event.suggest(this.service::sponge);
+        }
     }
 
     @Override
@@ -241,8 +245,7 @@ public class LPSpongePlugin extends AbstractLuckPermsPlugin {
 
     @Override
     protected void registerHousekeepingTasks() {
-        this.bootstrap.getScheduler().asyncRepeating(new ExpireTemporaryTask(this), 3, TimeUnit.SECONDS);
-        this.bootstrap.getScheduler().asyncRepeating(new CacheHousekeepingTask(this), 2, TimeUnit.MINUTES);
+        super.registerHousekeepingTasks();
         this.bootstrap.getScheduler().asyncRepeating(new ServiceCacheHousekeepingTask(this.service), 2, TimeUnit.MINUTES);
     }
 

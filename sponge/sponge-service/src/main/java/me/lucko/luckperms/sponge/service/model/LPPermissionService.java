@@ -30,6 +30,7 @@ import com.google.common.collect.ImmutableMap;
 
 import me.lucko.luckperms.common.context.ContextManager;
 import me.lucko.luckperms.common.plugin.LuckPermsPlugin;
+import me.lucko.luckperms.sponge.service.PermissionAndContextService;
 import me.lucko.luckperms.sponge.service.reference.SubjectReferenceFactory;
 
 import net.kyori.adventure.text.Component;
@@ -56,7 +57,7 @@ public interface LPPermissionService {
 
     SubjectReferenceFactory getReferenceFactory();
 
-    PermissionService sponge();
+    PermissionAndContextService sponge();
 
     LPSubjectCollection getUserSubjects();
 
