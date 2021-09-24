@@ -38,7 +38,7 @@ import me.lucko.luckperms.common.model.User;
 import me.lucko.luckperms.common.model.manager.track.StandardTrackManager;
 import me.lucko.luckperms.common.plugin.AbstractLuckPermsPlugin;
 import me.lucko.luckperms.common.sender.AbstractSender;
-import me.lucko.luckperms.common.sender.DummySender;
+import me.lucko.luckperms.common.sender.DummyConsoleSender;
 import me.lucko.luckperms.common.sender.Sender;
 import me.lucko.luckperms.common.tasks.CacheHousekeepingTask;
 import me.lucko.luckperms.common.tasks.ExpireTemporaryTask;
@@ -59,7 +59,7 @@ import me.lucko.luckperms.sponge.service.model.persisted.PersistedCollection;
 import me.lucko.luckperms.sponge.tasks.ServiceCacheHousekeepingTask;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.plain.PlainComponentSerializer;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.query.QueryOptions;
 
@@ -294,20 +294,20 @@ public class LPSpongePlugin extends AbstractLuckPermsPlugin {
     public Stream<Sender> getOnlineSenders() {
         return Stream.concat(
                 Stream.of(getConsoleSender()),
-                this.bootstrap.getServer().map(server -> server.getOnlinePlayers().stream().map(s -> this.senderFactory.wrap(s))).orElseGet(Stream::empty)
+                this.bootstrap.getServer().map(server -> server.onlinePlayers().stream().map(s -> this.senderFactory.wrap(s))).orElseGet(Stream::empty)
         );
     }
 
     @Override
     public Sender getConsoleSender() {
         if (this.bootstrap.getGame().isServerAvailable()) {
-            return this.senderFactory.wrap(this.bootstrap.getGame().getSystemSubject());
+            return this.senderFactory.wrap(this.bootstrap.getGame().systemSubject());
         } else {
-            return new DummySender(this, Sender.CONSOLE_UUID, Sender.CONSOLE_NAME) {
+            return new DummyConsoleSender(this) {
                 @Override
                 public void sendMessage(Component message) {
                     for (Component line : AbstractSender.splitNewlines(TranslationManager.render(message))) {
-                        LPSpongePlugin.this.bootstrap.getPluginLogger().info(PlainComponentSerializer.plain().serialize(line));
+                        LPSpongePlugin.this.bootstrap.getPluginLogger().info(PlainTextComponentSerializer.plainText().serialize(line));
                     }
                 }
             };

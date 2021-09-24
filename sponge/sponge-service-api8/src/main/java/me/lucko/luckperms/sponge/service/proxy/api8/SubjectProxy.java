@@ -25,18 +25,21 @@
 
 package me.lucko.luckperms.sponge.service.proxy.api8;
 
-import me.lucko.luckperms.common.context.QueryOptionsSupplier;
 import me.lucko.luckperms.sponge.service.CompatibilityUtil;
 import me.lucko.luckperms.sponge.service.model.LPPermissionService;
 import me.lucko.luckperms.sponge.service.model.LPProxiedServiceObject;
 import me.lucko.luckperms.sponge.service.model.LPProxiedSubject;
 import me.lucko.luckperms.sponge.service.model.LPSubject;
 import me.lucko.luckperms.sponge.service.model.LPSubjectReference;
+import me.lucko.luckperms.sponge.service.model.LPSubjectUser;
 
 import net.luckperms.api.query.QueryOptions;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.spongepowered.api.entity.living.player.server.ServerPlayer;
+import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.service.context.Context;
+import org.spongepowered.api.service.permission.PermissionService;
 import org.spongepowered.api.service.permission.Subject;
 import org.spongepowered.api.service.permission.SubjectCollection;
 import org.spongepowered.api.service.permission.SubjectData;
@@ -53,8 +56,6 @@ public final class SubjectProxy implements Subject, LPProxiedSubject, LPProxiedS
     private final LPPermissionService service;
     private final LPSubjectReference ref;
 
-    private QueryOptionsSupplier queryOptionsSupplier;
-
     public SubjectProxy(LPPermissionService service, LPSubjectReference ref) {
         this.service = service;
         this.ref = ref;
@@ -64,14 +65,6 @@ public final class SubjectProxy implements Subject, LPProxiedSubject, LPProxiedS
         return this.ref.resolveLp();
     }
 
-    // lazy init
-    private QueryOptionsSupplier queryOptionsCache() {
-        if (this.queryOptionsSupplier == null) {
-            this.queryOptionsSupplier = this.service.getContextManager().getCacheFor(this);
-        }
-        return this.queryOptionsSupplier;
-    }
-
     @Override
     public @NonNull LPSubjectReference asSubjectReference() {
         return this.ref;
@@ -79,12 +72,12 @@ public final class SubjectProxy implements Subject, LPProxiedSubject, LPProxiedS
 
     @Override
     public @NonNull QueryOptions getQueryOptions() {
-        return queryOptionsCache().getQueryOptions();
+        return this.service.getContextManager().getQueryOptions(this);
     }
 
     @Override
-    public @NonNull SubjectCollection getContainingCollection() {
-        return this.service.getCollection(this.ref.getCollectionIdentifier()).sponge();
+    public @NonNull SubjectCollection containingCollection() {
+        return this.service.getCollection(this.ref.collectionIdentifier()).sponge();
     }
 
     @Override
@@ -93,75 +86,77 @@ public final class SubjectProxy implements Subject, LPProxiedSubject, LPProxiedS
     }
 
     @Override
-    public SubjectData getSubjectData() {
+    public SubjectData subjectData() {
         return new SubjectDataProxy(this.service, this.ref, true);
     }
 
     @Override
-    public SubjectData getTransientSubjectData() {
+    public SubjectData transientSubjectData() {
         return new SubjectDataProxy(this.service, this.ref, false);
     }
 
     @Override
-    public boolean hasPermission(@NonNull Set<Context> contexts, @NonNull String permission) {
-        return handle().thenApply(handle -> handle.getPermissionValue(CompatibilityUtil.convertContexts(contexts), permission).asBoolean()).join();
+    public @NonNull Tristate permissionValue(@NonNull String permission, @NonNull Cause cause) {
+        return handle().thenApply(handle -> CompatibilityUtil.convertTristate(handle.getPermissionValue(this.service.getContextsForCause(cause), permission))).join();
     }
 
     @Override
-    public boolean hasPermission(@NonNull String permission) {
-        return handle().thenApply(handle -> handle.getPermissionValue(queryOptionsCache().getContextSet(), permission).asBoolean()).join();
-    }
-
-    @Override
-    public @NonNull Tristate getPermissionValue(@NonNull Set<Context> contexts, @NonNull String permission) {
+    public @NonNull Tristate permissionValue(@NonNull String permission, @NonNull Set<Context> contexts) {
         return handle().thenApply(handle -> CompatibilityUtil.convertTristate(handle.getPermissionValue(CompatibilityUtil.convertContexts(contexts), permission))).join();
     }
 
     @Override
-    public boolean isChildOf(@NonNull SubjectReference parent) {
-        return handle().thenApply(handle -> handle.isChildOf(queryOptionsCache().getContextSet(), this.service.getReferenceFactory().obtain(parent))).join();
+    public boolean isChildOf(@NonNull SubjectReference parent, @NonNull Cause cause) {
+        return handle().thenApply(handle -> handle.isChildOf(this.service.getContextsForCause(cause), this.service.getReferenceFactory().obtain(parent))).join();
     }
 
     @Override
-    public boolean isChildOf(@NonNull Set<Context> contexts, @NonNull SubjectReference parent) {
+    public boolean isChildOf(@NonNull SubjectReference parent, @NonNull Set<Context> contexts) {
         return handle().thenApply(handle -> handle.isChildOf(CompatibilityUtil.convertContexts(contexts), this.service.getReferenceFactory().obtain(parent))).join();
     }
 
-    @SuppressWarnings("rawtypes")
     @Override
-    public @NonNull List<SubjectReference> getParents() {
-        return (List) handle().thenApply(handle -> handle.getParents(queryOptionsCache().getContextSet())).join();
-    }
-
-    @SuppressWarnings("rawtypes")
-    @Override
-    public @NonNull List<SubjectReference> getParents(@NonNull Set<Context> contexts) {
-        return (List) handle().thenApply(handle -> handle.getParents(CompatibilityUtil.convertContexts(contexts))).join();
+    public List<? extends SubjectReference> parents(@NonNull Cause cause) {
+        return handle().thenApply(handle -> handle.getParents(this.service.getContextsForCause(cause))).join();
     }
 
     @Override
-    public @NonNull Optional<String> getOption(@NonNull Set<Context> contexts, @NonNull String key) {
+    public @NonNull List<? extends SubjectReference> parents(@NonNull Set<Context> contexts) {
+        return handle().thenApply(handle -> handle.getParents(CompatibilityUtil.convertContexts(contexts))).join();
+    }
+
+    @Override
+    public Optional<String> option(@NonNull String key, @NonNull Cause cause) {
+        return handle().thenApply(handle -> handle.getOption(this.service.getContextsForCause(cause), key)).join();
+    }
+
+    @Override
+    public @NonNull Optional<String> option(@NonNull String key, @NonNull Set<Context> contexts) {
         return handle().thenApply(handle -> handle.getOption(CompatibilityUtil.convertContexts(contexts), key)).join();
     }
 
     @Override
-    public @NonNull Optional<String> getOption(@NonNull String key) {
-        return handle().thenApply(handle -> handle.getOption(queryOptionsCache().getContextSet(), key)).join();
+    public String identifier() {
+        return this.ref.subjectIdentifier();
     }
 
     @Override
-    public String getIdentifier() {
-        return this.ref.getSubjectIdentifier();
-    }
-
-    @Override
-    public @NonNull Optional<String> getFriendlyIdentifier() {
+    public @NonNull Optional<String> friendlyIdentifier() {
         return handle().thenApply(LPSubject::getFriendlyIdentifier).join();
     }
 
     @Override
-    public @NonNull Set<Context> getActiveContexts() {
-        return CompatibilityUtil.convertContexts(queryOptionsCache().getContextSet());
+    public Optional<?> associatedObject() {
+        if (this.ref.collectionIdentifier().equals(PermissionService.SUBJECTS_USER)) {
+            LPSubject lpSubject = handle().join();
+            if (lpSubject instanceof LPSubjectUser) {
+                ServerPlayer player = ((LPSubjectUser) lpSubject).resolvePlayer().orElse(null);
+                if (player != null) {
+                    return Optional.of(player);
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     @Override

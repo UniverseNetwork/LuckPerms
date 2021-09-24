@@ -28,13 +28,17 @@ package me.lucko.luckperms.sponge.service.proxy.api8;
 import com.google.common.collect.ImmutableSet;
 
 import me.lucko.luckperms.common.util.ImmutableCollectors;
+import me.lucko.luckperms.sponge.service.CompatibilityUtil;
 import me.lucko.luckperms.sponge.service.model.LPPermissionDescription;
 import me.lucko.luckperms.sponge.service.model.LPPermissionService;
 import me.lucko.luckperms.sponge.service.model.LPProxiedServiceObject;
 import me.lucko.luckperms.sponge.service.model.LPSubjectCollection;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.spongepowered.api.event.Cause;
+import org.spongepowered.api.service.context.Context;
 import org.spongepowered.api.service.context.ContextCalculator;
+import org.spongepowered.api.service.context.ContextService;
 import org.spongepowered.api.service.permission.PermissionDescription;
 import org.spongepowered.api.service.permission.PermissionService;
 import org.spongepowered.api.service.permission.Subject;
@@ -51,7 +55,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
-public final class PermissionServiceProxy implements PermissionService, LPProxiedServiceObject {
+public final class PermissionServiceProxy implements PermissionService, ContextService, LPProxiedServiceObject {
     private final LPPermissionService handle;
 
     public PermissionServiceProxy(LPPermissionService handle) {
@@ -59,22 +63,22 @@ public final class PermissionServiceProxy implements PermissionService, LPProxie
     }
 
     @Override
-    public @NonNull SubjectCollection getUserSubjects() {
+    public @NonNull SubjectCollection userSubjects() {
         return this.handle.getUserSubjects().sponge();
     }
 
     @Override
-    public @NonNull SubjectCollection getGroupSubjects() {
+    public @NonNull SubjectCollection groupSubjects() {
         return this.handle.getGroupSubjects().sponge();
     }
 
     @Override
-    public @NonNull Subject getDefaults() {
+    public @NonNull Subject defaults() {
         return this.handle.getRootDefaults().sponge();
     }
 
     @Override
-    public @NonNull Predicate<String> getIdentifierValidityPredicate() {
+    public @NonNull Predicate<String> identifierValidityPredicate() {
         return this.handle.getIdentifierValidityPredicate();
     }
 
@@ -84,7 +88,7 @@ public final class PermissionServiceProxy implements PermissionService, LPProxie
     }
 
     @Override
-    public @NonNull Optional<SubjectCollection> getCollection(String s) {
+    public @NonNull Optional<SubjectCollection> collection(String s) {
         return Optional.ofNullable(this.handle.getLoadedCollections().get(s.toLowerCase(Locale.ROOT))).map(LPSubjectCollection::sponge);
     }
 
@@ -94,7 +98,7 @@ public final class PermissionServiceProxy implements PermissionService, LPProxie
     }
 
     @Override
-    public @NonNull Map<String, SubjectCollection> getLoadedCollections() {
+    public @NonNull Map<String, SubjectCollection> loadedCollections() {
         return this.handle.getLoadedCollections().entrySet().stream()
                 .collect(ImmutableCollectors.toMap(
                         Map.Entry::getKey,
@@ -103,7 +107,7 @@ public final class PermissionServiceProxy implements PermissionService, LPProxie
     }
 
     @Override
-    public CompletableFuture<Set<String>> getAllIdentifiers() {
+    public CompletableFuture<? extends Set<String>> allIdentifiers() {
         return CompletableFuture.completedFuture(ImmutableSet.copyOf(this.handle.getLoadedCollections().keySet()));
     }
 
@@ -130,17 +134,27 @@ public final class PermissionServiceProxy implements PermissionService, LPProxie
     }
 
     @Override
-    public @NonNull Optional<PermissionDescription> getDescription(@NonNull String s) {
+    public @NonNull Optional<PermissionDescription> description(@NonNull String s) {
         return this.handle.getDescription(s).map(LPPermissionDescription::sponge);
     }
 
     @Override
-    public @NonNull Collection<PermissionDescription> getDescriptions() {
+    public @NonNull Collection<PermissionDescription> descriptions() {
         return this.handle.getDescriptions().stream().map(LPPermissionDescription::sponge).collect(ImmutableCollectors.toSet());
     }
 
     @Override
-    public void registerContextCalculator(@NonNull ContextCalculator<Subject> contextCalculator) {
+    public Set<Context> contexts() {
+        return CompatibilityUtil.convertContexts(this.handle.getContextsForCurrentCause());
+    }
+
+    @Override
+    public Set<Context> contextsFor(Cause cause) {
+        return CompatibilityUtil.convertContexts(this.handle.getContextsForCurrentCause());
+    }
+
+    @Override
+    public void registerContextCalculator(@NonNull ContextCalculator contextCalculator) {
         this.handle.registerContextCalculator(contextCalculator);
     }
 

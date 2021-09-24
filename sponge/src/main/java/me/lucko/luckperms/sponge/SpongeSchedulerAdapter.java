@@ -61,7 +61,7 @@ public class SpongeSchedulerAdapter implements SchedulerAdapter {
         this.game = game;
         this.pluginContainer = pluginContainer;
 
-        this.asyncScheduler = game.getAsyncScheduler();
+        this.asyncScheduler = game.asyncScheduler();
         this.async = this.asyncScheduler.createExecutor(pluginContainer);
         this.sync = Suppliers.memoize(() -> getSyncScheduler().createExecutor(this.pluginContainer));
     }
@@ -77,7 +77,7 @@ public class SpongeSchedulerAdapter implements SchedulerAdapter {
     }
 
     public Scheduler getSyncScheduler() {
-        return this.game.getServer().getScheduler();
+        return this.game.server().scheduler();
     }
 
     private SchedulerTask submitAsyncTask(Runnable runnable, Consumer<Task.Builder> config) {

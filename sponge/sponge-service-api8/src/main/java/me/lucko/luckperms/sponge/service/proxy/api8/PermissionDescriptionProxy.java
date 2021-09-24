@@ -33,12 +33,15 @@ import me.lucko.luckperms.sponge.service.model.LPProxiedServiceObject;
 import net.kyori.adventure.text.Component;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.spongepowered.api.ResourceKey;
 import org.spongepowered.api.service.permission.PermissionDescription;
 import org.spongepowered.api.service.permission.Subject;
 import org.spongepowered.api.service.permission.SubjectReference;
+import org.spongepowered.api.util.Tristate;
 import org.spongepowered.plugin.PluginContainer;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -52,27 +55,63 @@ public final class PermissionDescriptionProxy implements PermissionDescription, 
     }
 
     @Override
-    public @NonNull String getId() {
+    public @NonNull String id() {
         return this.handle.getId();
     }
 
     @Override
-    public @NonNull Optional<Component> getDescription() {
+    public @NonNull Optional<Component> description() {
         return this.handle.getDescription();
     }
 
     @Override
-    public @NonNull Optional<PluginContainer> getOwner() {
+    public @NonNull Optional<PluginContainer> owner() {
         return this.handle.getOwner();
     }
 
     @Override
-    public @NonNull Map<Subject, Boolean> getAssignedSubjects(@NonNull String s) {
+    public Tristate defaultValue() {
+        return Tristate.UNDEFINED;
+    }
+
+    @Override
+    public @NonNull Map<Subject, Boolean> assignedSubjects(@NonNull String s) {
         return this.handle.getAssignedSubjects(s).entrySet().stream()
                 .collect(ImmutableCollectors.toMap(
                         e -> new SubjectProxy(this.service, e.getKey().toReference()),
                         Map.Entry::getValue
                 ));
+    }
+
+    @Override
+    public boolean query(Subject subj) {
+        return subj.hasPermission(this.handle.getId());
+    }
+
+    @Override
+    public boolean query(Subject subj, String parameter) {
+        Objects.requireNonNull(parameter, "parameter");
+        return subj.hasPermission(this.handle.getId() + '.' + parameter);
+    }
+
+    @Override
+    public boolean query(Subject subj, ResourceKey key) {
+        return query(subj, key.namespace() + '.' + key.value());
+    }
+
+    @Override
+    public boolean query(Subject subj, String... parameters) {
+        if (parameters.length == 0) {
+            return this.query(subj);
+        } else if (parameters.length == 1) {
+            return this.query(subj, parameters[0]);
+        }
+
+        StringBuilder builder = new StringBuilder(this.handle.getId());
+        for (String parameter : parameters) {
+            builder.append('.').append(parameter);
+        }
+        return subj.hasPermission(builder.toString());
     }
 
     @Override

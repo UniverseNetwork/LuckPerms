@@ -23,23 +23,22 @@
  *  SOFTWARE.
  */
 
-package me.lucko.luckperms.sponge.util;
+package me.lucko.luckperms.sponge;
 
-import me.lucko.luckperms.common.dependencies.classloader.ReflectionClassLoader;
 import me.lucko.luckperms.common.plugin.bootstrap.LuckPermsBootstrap;
-import me.lucko.luckperms.sponge.LPSpongeBootstrap;
+import me.lucko.luckperms.common.plugin.classpath.ReflectionClassPathAppender;
 
 import java.lang.reflect.Field;
 import java.net.URLClassLoader;
 
-public class SpongeClassLoader extends ReflectionClassLoader {
+public class SpongeClassPathAppender extends ReflectionClassPathAppender {
 
     private static URLClassLoader extractClassLoaderFromBootstrap(LuckPermsBootstrap bootstrap) {
         ClassLoader classLoader = bootstrap.getClass().getClassLoader();
 
         // try to cast directly to URLClassLoader in case things change in the future
         if (classLoader instanceof URLClassLoader) {
-            return castToUrlClassLoader(classLoader);
+            return (URLClassLoader) classLoader;
         }
 
         Class<? extends ClassLoader> classLoaderClass = classLoader.getClass();
@@ -52,14 +51,14 @@ public class SpongeClassLoader extends ReflectionClassLoader {
             Field delegatedClassLoaderField = classLoaderClass.getDeclaredField("delegatedClassLoader");
             delegatedClassLoaderField.setAccessible(true);
             Object delegatedClassLoader = delegatedClassLoaderField.get(classLoader);
-            return castToUrlClassLoader(delegatedClassLoader);
+            return (URLClassLoader) delegatedClassLoader;
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public SpongeClassLoader(LPSpongeBootstrap bootstrap) {
-        super(bootstrap, SpongeClassLoader::extractClassLoaderFromBootstrap);
+    public SpongeClassPathAppender(LuckPermsBootstrap bootstrap) throws IllegalStateException {
+        super(extractClassLoaderFromBootstrap(bootstrap));
     }
 
 }

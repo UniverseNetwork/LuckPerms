@@ -123,8 +123,8 @@ public abstract class PermissionHolderSubject<T extends PermissionHolder> implem
 
     @Override
     public boolean isChildOf(ImmutableContextSet contexts, LPSubjectReference parent) {
-        return parent.getCollectionIdentifier().equals(PermissionService.SUBJECTS_GROUP) &&
-                getPermissionValue(contexts, Inheritance.key(parent.getSubjectIdentifier())).asBoolean();
+        return parent.collectionIdentifier().equals(PermissionService.SUBJECTS_GROUP) &&
+                getPermissionValue(contexts, Inheritance.key(parent.subjectIdentifier())).asBoolean();
     }
 
     @Override

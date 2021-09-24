@@ -63,7 +63,7 @@ public class PluginMessageMessenger implements Messenger, RawPlayDataHandler<Ser
     }
 
     public void init() {
-        this.channel = this.plugin.getBootstrap().getGame().getChannelRegistry().getOfType(CHANNEL, RawDataChannel.class);
+        this.channel = this.plugin.getBootstrap().getGame().channelManager().ofType(CHANNEL, RawDataChannel.class);
         this.channel.play().addHandler(EngineConnectionSide.SERVER, this);
     }
 
@@ -83,7 +83,7 @@ public class PluginMessageMessenger implements Messenger, RawPlayDataHandler<Ser
                         return;
                     }
 
-                    Collection<ServerPlayer> players = this.plugin.getBootstrap().getGame().getServer().getOnlinePlayers();
+                    Collection<ServerPlayer> players = this.plugin.getBootstrap().getGame().server().onlinePlayers();
                     ServerPlayer p = Iterables.getFirst(players, null);
                     if (p == null) {
                         return;

@@ -90,7 +90,7 @@ public final class SubjectReferenceFactory {
             return ((LPProxiedSubject) subject).asSubjectReference();
         }
 
-        return obtain(subject.getContainingCollection().getIdentifier(), subject.getIdentifier());
+        return obtain(subject.containingCollection().identifier(), subject.identifier());
     }
 
     public LPSubjectReference obtain(SubjectReference reference) {
@@ -98,7 +98,7 @@ public final class SubjectReferenceFactory {
         if (reference instanceof LPSubjectReference) {
             return (LPSubjectReference) reference;
         } else {
-            return obtain(reference.getCollectionIdentifier(), reference.getSubjectIdentifier());
+            return obtain(reference.collectionIdentifier(), reference.subjectIdentifier());
         }
     }
 

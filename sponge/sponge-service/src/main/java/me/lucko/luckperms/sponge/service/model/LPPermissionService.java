@@ -33,8 +33,10 @@ import me.lucko.luckperms.common.plugin.LuckPermsPlugin;
 import me.lucko.luckperms.sponge.service.reference.SubjectReferenceFactory;
 
 import net.kyori.adventure.text.Component;
+import net.luckperms.api.context.ImmutableContextSet;
 
 import org.spongepowered.api.entity.living.player.server.ServerPlayer;
+import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.service.context.ContextCalculator;
 import org.spongepowered.api.service.permission.PermissionService;
 import org.spongepowered.api.service.permission.Subject;
@@ -76,7 +78,11 @@ public interface LPPermissionService {
 
     ImmutableCollection<LPPermissionDescription> getDescriptions();
 
-    void registerContextCalculator(ContextCalculator<Subject> calculator);
+    void registerContextCalculator(ContextCalculator calculator);
+
+    ImmutableContextSet getContextsForCause(Cause cause);
+
+    ImmutableContextSet getContextsForCurrentCause();
 
     void fireUpdateEvent(LPSubjectData subjectData);
 

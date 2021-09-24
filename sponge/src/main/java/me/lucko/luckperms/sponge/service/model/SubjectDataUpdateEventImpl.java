@@ -45,7 +45,7 @@ public class SubjectDataUpdateEventImpl extends AbstractEvent implements Subject
     }
 
     @Override
-    public SubjectData getUpdatedData() {
+    public SubjectData updatedData() {
         return this.subjectData.sponge();
     }
 
@@ -54,7 +54,7 @@ public class SubjectDataUpdateEventImpl extends AbstractEvent implements Subject
     }
 
     @Override
-    public @NonNull Cause getCause() {
+    public @NonNull Cause cause() {
         EventContext eventContext = EventContext.builder()
                 .add(EventContextKeys.PLUGIN, this.plugin.getBootstrap().getPluginContainer())
                 .build();

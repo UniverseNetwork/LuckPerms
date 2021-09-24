@@ -68,7 +68,7 @@ public class SpongeCommandListUpdater implements LuckPermsEventListener {
     }
 
     private void onContextUpdate(ContextUpdateEvent e) {
-        e.getSubject(ServerPlayer.class).ifPresent(p -> requestUpdate(p.getUniqueId()));
+        e.getSubject(ServerPlayer.class).ifPresent(p -> requestUpdate(p.uniqueId()));
     }
 
     private void requestUpdate(UUID uniqueId) {
@@ -85,7 +85,7 @@ public class SpongeCommandListUpdater implements LuckPermsEventListener {
         this.plugin.getBootstrap().getScheduler().sync().execute(() -> {
             ServerPlayer player = this.plugin.getBootstrap().getPlayer(uniqueId).orElse(null);
             if (player != null) {
-                CommandManager commandManager = this.plugin.getBootstrap().getGame().getCommandManager();
+                CommandManager commandManager = this.plugin.getBootstrap().getGame().server().commandManager();
                 commandManager.updateCommandTreeForPlayer(player);
             }
         });

@@ -60,7 +60,7 @@ public final class UserSubject extends PermissionHolderSubject<SpongeUser> imple
             return Optional.empty();
         }
 
-        return Sponge.getServer().getPlayer(this.parent.getUniqueId());
+        return Sponge.server().player(this.parent.getUniqueId());
     }
 
     @Override

@@ -23,31 +23,23 @@
  *  SOFTWARE.
  */
 
-package me.lucko.luckperms.sponge;
+package me.lucko.luckperms.common.context;
 
-import me.lucko.luckperms.common.api.LuckPermsApiProvider;
-import me.lucko.luckperms.common.event.AbstractEventBus;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 
-import org.spongepowered.api.Sponge;
-import org.spongepowered.plugin.PluginContainer;
+import net.luckperms.api.query.QueryOptions;
 
-public class SpongeEventBus extends AbstractEventBus<PluginContainer> {
-    public SpongeEventBus(LPSpongePlugin plugin, LuckPermsApiProvider apiProvider) {
-        super(plugin, apiProvider);
+public final class InlineQueryOptionsSupplier<T> implements QueryOptionsSupplier {
+    private final T key;
+    private final LoadingCache<T, QueryOptions> cache;
+
+    public InlineQueryOptionsSupplier(T key, LoadingCache<T, QueryOptions> cache) {
+        this.key = key;
+        this.cache = cache;
     }
 
     @Override
-    protected PluginContainer checkPlugin(Object plugin) throws IllegalArgumentException {
-        if (plugin instanceof PluginContainer) {
-            return (PluginContainer) plugin;
-        }
-
-        PluginContainer pluginContainer = Sponge.pluginManager().fromInstance(plugin).orElse(null);
-        if (pluginContainer != null) {
-            return pluginContainer;
-        }
-
-        throw new IllegalArgumentException("Object " + plugin + " (" + plugin.getClass().getName() + ") is not a plugin.");
+    public QueryOptions getQueryOptions() {
+        return this.cache.get(this.key);
     }
-
 }

@@ -35,7 +35,9 @@ import net.kyori.adventure.text.Component;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.spongepowered.api.command.Command;
 import org.spongepowered.api.command.CommandCause;
+import org.spongepowered.api.command.CommandCompletion;
 import org.spongepowered.api.command.CommandResult;
+import org.spongepowered.api.command.parameter.ArgumentReader;
 import org.spongepowered.api.command.selector.Selector;
 import org.spongepowered.api.entity.living.player.Player;
 
@@ -53,18 +55,21 @@ public class SpongeCommandExecutor extends CommandManager implements Command.Raw
     }
 
     @Override
-    public @NonNull CommandResult process(@NonNull CommandCause source, @NonNull String args) {
-        Sender wrapped = this.plugin.getSenderFactory().wrap(source.getAudience());
-        List<String> arguments = resolveSelectors(source, ArgumentTokenizer.EXECUTE.tokenizeInput(args));
+    public @NonNull CommandResult process(@NonNull CommandCause source, ArgumentReader.@NonNull Mutable args) {
+        Sender wrapped = this.plugin.getSenderFactory().wrap(source.audience());
+        List<String> arguments = resolveSelectors(source, ArgumentTokenizer.EXECUTE.tokenizeInput(args.input()));
         executeCommand(wrapped, "lp", arguments);
         return CommandResult.success();
     }
 
     @Override
-    public @NonNull List<String> getSuggestions(@NonNull CommandCause source, @NonNull String args) {
-        Sender wrapped = this.plugin.getSenderFactory().wrap(source.getAudience());
-        List<String> arguments = resolveSelectors(source, ArgumentTokenizer.TAB_COMPLETE.tokenizeInput(args));
-        return tabCompleteCommand(wrapped, arguments);
+    public List<CommandCompletion> complete(@NonNull CommandCause source, ArgumentReader.@NonNull Mutable args) {
+        Sender wrapped = this.plugin.getSenderFactory().wrap(source.audience());
+        List<String> arguments = resolveSelectors(source, ArgumentTokenizer.TAB_COMPLETE.tokenizeInput(args.input()));
+        return tabCompleteCommand(wrapped, arguments)
+                .stream()
+                .map(CommandCompletion::of)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -73,17 +78,17 @@ public class SpongeCommandExecutor extends CommandManager implements Command.Raw
     }
 
     @Override
-    public Optional<Component> getShortDescription(CommandCause cause) {
+    public Optional<Component> shortDescription(CommandCause cause) {
         return Optional.of(Component.text("Manage permissions"));
     }
 
     @Override
-    public Optional<Component> getExtendedDescription(CommandCause cause) {
+    public Optional<Component> extendedDescription(CommandCause cause) {
         return Optional.empty();
     }
 
     @Override
-    public Component getUsage(CommandCause cause) {
+    public Component usage(CommandCause cause) {
         return Component.text("/luckperms");
     }
 
@@ -120,7 +125,7 @@ public class SpongeCommandExecutor extends CommandManager implements Command.Raw
             }
 
             Player player = matchedPlayers.get(0);
-            it.set(player.getUniqueId().toString());
+            it.set(player.uniqueId().toString());
         }
 
         return args;

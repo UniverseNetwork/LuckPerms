@@ -28,20 +28,20 @@ package me.lucko.luckperms.sponge.context;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 
 import me.lucko.luckperms.common.context.ContextManager;
-import me.lucko.luckperms.common.context.QueryOptionsCache;
+import me.lucko.luckperms.common.context.InlineQueryOptionsSupplier;
 import me.lucko.luckperms.common.context.QueryOptionsSupplier;
 import me.lucko.luckperms.common.util.CaffeineFactory;
 import me.lucko.luckperms.sponge.LPSpongePlugin;
-import me.lucko.luckperms.sponge.service.model.LPProxiedSubject;
-import me.lucko.luckperms.sponge.service.model.LPSubject;
-import me.lucko.luckperms.sponge.service.model.LPSubjectReference;
-import me.lucko.luckperms.sponge.service.model.LPSubjectUser;
+import me.lucko.luckperms.sponge.service.model.ContextCalculatorProxy;
+import me.lucko.luckperms.sponge.service.model.TemporaryCauseHolderSubject;
 
+import net.luckperms.api.context.ContextCalculator;
+import net.luckperms.api.context.ContextConsumer;
 import net.luckperms.api.context.ImmutableContextSet;
 import net.luckperms.api.query.QueryOptions;
 
 import org.spongepowered.api.entity.living.player.server.ServerPlayer;
-import org.spongepowered.api.service.permission.PermissionService;
+import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.service.permission.Subject;
 
 import java.util.UUID;
@@ -49,34 +49,40 @@ import java.util.concurrent.TimeUnit;
 
 public class SpongeContextManager extends ContextManager<Subject, ServerPlayer> {
 
-    private final LoadingCache<Subject, QueryOptionsCache<Subject>> subjectCaches = CaffeineFactory.newBuilder()
-            .expireAfterAccess(1, TimeUnit.MINUTES)
-            .build(key -> new QueryOptionsCache<>(key, this));
+    private final LoadingCache<Subject, QueryOptions> contextsCache = CaffeineFactory.newBuilder()
+            .expireAfterWrite(50, TimeUnit.MILLISECONDS)
+            .build(this::calculate);
 
     public SpongeContextManager(LPSpongePlugin plugin) {
         super(plugin, Subject.class, ServerPlayer.class);
     }
 
     @Override
-    protected Subject unwrapProxy(Subject subject) {
-        if (subject instanceof LPProxiedSubject) {
-            LPSubjectReference ref = ((LPProxiedSubject) subject).asSubjectReference();
-            if (ref.getCollectionIdentifier().equals(PermissionService.SUBJECTS_USER)) {
-                LPSubject lpSubject = ref.resolveLp().join();
-                if (lpSubject instanceof LPSubjectUser) {
-                    ServerPlayer player = ((LPSubjectUser) lpSubject).resolvePlayer().orElse(null);
-                    if (player != null) {
-                        return player;
-                    }
-                }
+    protected void callContextCalculator(ContextCalculator<? super Subject> calculator, Subject subject, ContextConsumer consumer) {
+        if (subject instanceof TemporaryCauseHolderSubject) {
+            Cause cause = ((TemporaryCauseHolderSubject) subject).getCause();
+            Subject actualSubject = ((TemporaryCauseHolderSubject) subject).getSubject();
+
+            if (calculator instanceof ContextCalculatorProxy) {
+                ((ContextCalculatorProxy) calculator).calculate(cause, consumer);
+            } else if (actualSubject != null) {
+                calculator.calculate(actualSubject, consumer);
+            } else {
+                throw new IllegalArgumentException("Unable to extract Subject from Cause " + cause);
+            }
+        } else {
+            Object associatedObject = subject.associatedObject().orElse(null);
+            if (associatedObject instanceof Subject) {
+                calculator.calculate((Subject) associatedObject, consumer);
+            } else {
+                calculator.calculate(subject, consumer);
             }
         }
-        return subject;
     }
 
     @Override
     public UUID getUniqueId(ServerPlayer player) {
-        return player.getUniqueId();
+        return player.uniqueId();
     }
 
     @Override
@@ -85,15 +91,23 @@ public class SpongeContextManager extends ContextManager<Subject, ServerPlayer> 
             throw new NullPointerException("subject");
         }
 
-        return this.subjectCaches.get(subject);
+        return new InlineQueryOptionsSupplier<>(subject, this.contextsCache);
+    }
+
+    // override getContext, getQueryOptions and invalidateCache to skip the QueryOptionsSupplier
+    @Override
+    public ImmutableContextSet getContext(Subject subject) {
+        return getQueryOptions(subject).context();
+    }
+
+    @Override
+    public QueryOptions getQueryOptions(Subject subject) {
+        return this.contextsCache.get(subject);
     }
 
     @Override
     protected void invalidateCache(Subject subject) {
-        QueryOptionsCache<Subject> cache = this.subjectCaches.getIfPresent(subject);
-        if (cache != null) {
-            cache.invalidate();
-        }
+        this.contextsCache.invalidate(subject);
     }
 
     @Override

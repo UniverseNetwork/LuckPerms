@@ -34,6 +34,7 @@ import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
 import net.luckperms.api.util.Tristate;
 
+import org.spongepowered.api.SystemSubject;
 import org.spongepowered.api.command.exception.CommandException;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.service.permission.Subject;
@@ -49,7 +50,7 @@ public class SpongeSenderFactory extends SenderFactory<LPSpongePlugin, Audience>
     @Override
     protected String getName(Audience source) {
         if (source instanceof Player) {
-            return ((Player) source).getName();
+            return ((Player) source).name();
         }
         return Sender.CONSOLE_NAME;
     }
@@ -57,7 +58,7 @@ public class SpongeSenderFactory extends SenderFactory<LPSpongePlugin, Audience>
     @Override
     protected UUID getUniqueId(Audience source) {
         if (source instanceof Player) {
-            return ((Player) source).getUniqueId();
+            return ((Player) source).uniqueId();
         }
         return Sender.CONSOLE_UUID;
     }
@@ -66,7 +67,7 @@ public class SpongeSenderFactory extends SenderFactory<LPSpongePlugin, Audience>
     protected void sendMessage(Audience source, Component message) {
         Locale locale = null;
         if (source instanceof Player) {
-            locale = ((Player) source).getLocale();
+            locale = ((Player) source).locale();
         }
         Component rendered = TranslationManager.render(message, locale);
 
@@ -80,7 +81,7 @@ public class SpongeSenderFactory extends SenderFactory<LPSpongePlugin, Audience>
         }
 
         final Subject subject = (Subject) source;
-        Tristate result = CompatibilityUtil.convertTristate(subject.getPermissionValue(subject.getActiveContexts(), node));
+        Tristate result = CompatibilityUtil.convertTristate(subject.permissionValue(node));
 
         // check the permdefault
         if (result == Tristate.UNDEFINED && subject.hasPermission(node)) {
@@ -107,9 +108,14 @@ public class SpongeSenderFactory extends SenderFactory<LPSpongePlugin, Audience>
         }
 
         try {
-            getPlugin().getBootstrap().getGame().getCommandManager().process(((Subject) source), source, command);
+            getPlugin().getBootstrap().getGame().server().commandManager().process(((Subject) source), source, command);
         } catch (CommandException e) {
             // ignore
         }
+    }
+
+    @Override
+    protected boolean isConsole(Audience sender) {
+        return sender instanceof SystemSubject;
     }
 }

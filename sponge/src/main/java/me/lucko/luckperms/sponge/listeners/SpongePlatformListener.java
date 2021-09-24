@@ -41,11 +41,11 @@ public class SpongePlatformListener {
 
     @Listener
     public void onSendCommand(ExecuteCommandEvent e) {
-        CommandCause source = e.getCommandCause();
+        CommandCause source = e.commandCause();
 
-        final String name = e.getCommand().toLowerCase();
+        final String name = e.command().toLowerCase();
         if (((name.equals("op") || name.equals("minecraft:op")) && source.hasPermission("minecraft.command.op")) || ((name.equals("deop") || name.equals("minecraft:deop")) && source.hasPermission("minecraft.command.deop"))) {
-            Message.OP_DISABLED_SPONGE.send(this.plugin.getSenderFactory().wrap(source.getAudience()));
+            Message.OP_DISABLED_SPONGE.send(this.plugin.getSenderFactory().wrap(source.audience()));
         }
     }
 }

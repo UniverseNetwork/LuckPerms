@@ -62,17 +62,17 @@ public class SpongeConnectionListener extends AbstractConnectionListener {
            Listening on AFTER_PRE priority to allow plugins to modify username / UUID data here. (auth plugins)
            Also, give other plugins a chance to cancel the event. */
 
-        final GameProfile profile = e.getProfile();
-        final String username = profile.getName().orElseThrow(() -> new RuntimeException("No username present for user " + profile.getUniqueId()));
+        final GameProfile profile = e.profile();
+        final String username = profile.name().orElseThrow(() -> new RuntimeException("No username present for user " + profile.uniqueId()));
 
         if (this.plugin.getConfiguration().get(ConfigKeys.DEBUG_LOGINS)) {
-            this.plugin.getLogger().info("Processing auth event for " + profile.getUniqueId() + " - " + profile.getName());
+            this.plugin.getLogger().info("Processing auth event for " + profile.uniqueId() + " - " + profile.name());
         }
 
         if (e.isCancelled()) {
             // another plugin has disallowed the login.
-            this.plugin.getLogger().info("Another plugin has cancelled the connection for " + profile.getUniqueId() + " - " + username + ". No permissions data will be loaded.");
-            this.deniedAsyncLogin.add(profile.getUniqueId());
+            this.plugin.getLogger().info("Another plugin has cancelled the connection for " + profile.uniqueId() + " - " + username + ". No permissions data will be loaded.");
+            this.deniedAsyncLogin.add(profile.uniqueId());
             return;
         }
 
@@ -86,17 +86,17 @@ public class SpongeConnectionListener extends AbstractConnectionListener {
            - creating a user instance in the UserManager for this connection.
            - setting up cached data. */
         try {
-            User user = loadUser(profile.getUniqueId(), username);
-            recordConnection(profile.getUniqueId());
-            this.plugin.getEventDispatcher().dispatchPlayerLoginProcess(profile.getUniqueId(), username, user);
+            User user = loadUser(profile.uniqueId(), username);
+            recordConnection(profile.uniqueId());
+            this.plugin.getEventDispatcher().dispatchPlayerLoginProcess(profile.uniqueId(), username, user);
         } catch (Exception ex) {
-            this.plugin.getLogger().severe("Exception occurred whilst loading data for " + profile.getUniqueId() + " - " + profile.getName(), ex);
+            this.plugin.getLogger().severe("Exception occurred whilst loading data for " + profile.uniqueId() + " - " + profile.name(), ex);
 
-            this.deniedAsyncLogin.add(profile.getUniqueId());
+            this.deniedAsyncLogin.add(profile.uniqueId());
 
             e.setCancelled(true);
             e.setMessage(TranslationManager.render(Message.LOADING_DATABASE_ERROR.build()));
-            this.plugin.getEventDispatcher().dispatchPlayerLoginProcess(profile.getUniqueId(), username, null);
+            this.plugin.getEventDispatcher().dispatchPlayerLoginProcess(profile.uniqueId(), username, null);
         }
     }
 
@@ -107,11 +107,11 @@ public class SpongeConnectionListener extends AbstractConnectionListener {
            If the connection was cancelled here, we need to do something to clean up the data that was loaded. */
 
         // Check to see if this connection was denied at LOW.
-        if (this.deniedAsyncLogin.remove(e.getProfile().getUniqueId())) {
+        if (this.deniedAsyncLogin.remove(e.profile().uniqueId())) {
 
             // This is a problem, as they were denied at low priority, but are now being allowed.
             if (e.isCancelled()) {
-                this.plugin.getLogger().severe("Player connection was re-allowed for " + e.getProfile().getUniqueId());
+                this.plugin.getLogger().severe("Player connection was re-allowed for " + e.profile().uniqueId());
                 e.setCancelled(true);
             }
         }
@@ -124,24 +124,24 @@ public class SpongeConnectionListener extends AbstractConnectionListener {
            At this point, the users data should be present and loaded.
            Listening on LOW priority to allow plugins to further modify data here. (auth plugins, etc.) */
 
-        final GameProfile profile = e.getProfile();
+        final GameProfile profile = e.profile();
 
         if (this.plugin.getConfiguration().get(ConfigKeys.DEBUG_LOGINS)) {
-            this.plugin.getLogger().info("Processing login event for " + profile.getUniqueId() + " - " + profile.getName());
+            this.plugin.getLogger().info("Processing login event for " + profile.uniqueId() + " - " + profile.name());
         }
 
-        final User user = this.plugin.getUserManager().getIfLoaded(profile.getUniqueId());
+        final User user = this.plugin.getUserManager().getIfLoaded(profile.uniqueId());
 
         /* User instance is null for whatever reason. Could be that it was unloaded between asyncpre and now. */
         if (user == null) {
-            this.deniedLogin.add(profile.getUniqueId());
+            this.deniedLogin.add(profile.uniqueId());
 
-            if (!getUniqueConnections().contains(profile.getUniqueId())) {
-                this.plugin.getLogger().warn("User " + profile.getUniqueId() + " - " + profile.getName() +
+            if (!getUniqueConnections().contains(profile.uniqueId())) {
+                this.plugin.getLogger().warn("User " + profile.uniqueId() + " - " + profile.name() +
                         " doesn't have data pre-loaded, they have never been processed during pre-login in this session." +
                         " - denying login.");
             } else {
-                this.plugin.getLogger().warn("User " + profile.getUniqueId() + " - " + profile.getName() +
+                this.plugin.getLogger().warn("User " + profile.uniqueId() + " - " + profile.name() +
                         " doesn't currently have data pre-loaded, but they have been processed before in this session." +
                         " - denying login.");
             }
@@ -158,10 +158,10 @@ public class SpongeConnectionListener extends AbstractConnectionListener {
            If the connection was cancelled here, we need to do something to clean up the data that was loaded. */
 
         // Check to see if this connection was denied at LOW. Even if it was denied at LOW, their data will still be present.
-        if (this.deniedLogin.remove(e.getProfile().getUniqueId())) {
+        if (this.deniedLogin.remove(e.profile().uniqueId())) {
             // This is a problem, as they were denied at low priority, but are now being allowed.
             if (!e.isCancelled()) {
-                this.plugin.getLogger().severe("Player connection was re-allowed for " + e.getProfile().getUniqueId());
+                this.plugin.getLogger().severe("Player connection was re-allowed for " + e.profile().uniqueId());
                 e.setCancelled(true);
             }
         }
@@ -169,7 +169,7 @@ public class SpongeConnectionListener extends AbstractConnectionListener {
 
     @Listener(order = Order.POST)
     public void onClientLeave(ServerSideConnectionEvent.Disconnect e) {
-        handleDisconnect(e.getPlayer().getUniqueId());
+        handleDisconnect(e.player().uniqueId());
     }
 
 }

@@ -43,14 +43,17 @@ import me.lucko.luckperms.sponge.service.model.LPSubjectData;
 import me.lucko.luckperms.sponge.service.model.LPSubjectReference;
 import me.lucko.luckperms.sponge.service.model.SimplePermissionDescription;
 import me.lucko.luckperms.sponge.service.model.SubjectDataUpdateEventImpl;
+import me.lucko.luckperms.sponge.service.model.TemporaryCauseHolderSubject;
 import me.lucko.luckperms.sponge.service.model.persisted.DefaultsCollection;
 import me.lucko.luckperms.sponge.service.model.persisted.PersistedCollection;
 import me.lucko.luckperms.sponge.service.model.persisted.SubjectStorage;
 import me.lucko.luckperms.sponge.service.reference.SubjectReferenceFactory;
 
 import net.kyori.adventure.text.Component;
+import net.luckperms.api.context.ImmutableContextSet;
 
 import org.spongepowered.api.entity.living.player.server.ServerPlayer;
+import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.event.permission.SubjectDataUpdateEvent;
 import org.spongepowered.api.service.context.ContextCalculator;
 import org.spongepowered.api.service.permission.PermissionService;
@@ -229,16 +232,27 @@ public class LuckPermsService implements LPPermissionService {
     }
 
     @Override
-    public void registerContextCalculator(ContextCalculator<Subject> calculator) {
+    public void registerContextCalculator(ContextCalculator calculator) {
         Objects.requireNonNull(calculator);
         this.plugin.getContextManager().registerCalculator(new ContextCalculatorProxy(calculator));
+    }
+
+    @Override
+    public ImmutableContextSet getContextsForCause(Cause cause) {
+        Objects.requireNonNull(cause, "cause");
+        return this.plugin.getContextManager().getContext(new TemporaryCauseHolderSubject(cause));
+    }
+
+    @Override
+    public ImmutableContextSet getContextsForCurrentCause() {
+        return getContextsForCause(this.plugin.getBootstrap().getGame().server().causeStackManager().currentCause());
     }
 
     @Override
     public void fireUpdateEvent(LPSubjectData subjectData) {
         this.plugin.getBootstrap().getScheduler().executeAsync(() -> {
             SubjectDataUpdateEvent event = new SubjectDataUpdateEventImpl(this.plugin, subjectData);
-            this.plugin.getBootstrap().getGame().getEventManager().post(event);
+            this.plugin.getBootstrap().getGame().eventManager().post(event);
         });
     }
 

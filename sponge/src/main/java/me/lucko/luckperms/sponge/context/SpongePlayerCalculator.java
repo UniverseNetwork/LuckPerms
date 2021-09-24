@@ -37,22 +37,18 @@ import net.luckperms.api.context.DefaultContextKeys;
 import net.luckperms.api.context.ImmutableContextSet;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.spongepowered.api.CatalogTypes;
 import org.spongepowered.api.Game;
 import org.spongepowered.api.ResourceKey;
 import org.spongepowered.api.data.Keys;
 import org.spongepowered.api.data.value.ValueContainer;
 import org.spongepowered.api.entity.Entity;
-import org.spongepowered.api.entity.living.Humanoid;
-import org.spongepowered.api.entity.living.player.gamemode.GameMode;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.Order;
 import org.spongepowered.api.event.entity.ChangeEntityWorldEvent;
-import org.spongepowered.api.event.entity.living.ChangeGameModeEvent;
+import org.spongepowered.api.registry.RegistryTypes;
 import org.spongepowered.api.service.permission.Subject;
 import org.spongepowered.api.world.Locatable;
 import org.spongepowered.api.world.World;
-import org.spongepowered.api.world.dimension.DimensionType;
 import org.spongepowered.api.world.server.ServerWorld;
 
 public class SpongePlayerCalculator implements ContextCalculator<Subject> {
@@ -65,16 +61,16 @@ public class SpongePlayerCalculator implements ContextCalculator<Subject> {
     @Override
     public void calculate(@NonNull Subject subject, @NonNull ContextConsumer consumer) {
         if (subject instanceof Locatable) {
-            World<?> world = ((Locatable) subject).getWorld();
-            consumer.accept(DefaultContextKeys.DIMENSION_TYPE_KEY, getContextKey(world.getDimensionType().getKey()));
+            World<?, ?> world = ((Locatable) subject).world();
+            consumer.accept(DefaultContextKeys.DIMENSION_TYPE_KEY, getContextKey(world.worldType().key(RegistryTypes.WORLD_TYPE)));
             if (world instanceof ServerWorld) {
-                this.plugin.getConfiguration().get(ConfigKeys.WORLD_REWRITES).rewriteAndSubmit(getContextKey(((ServerWorld) world).getKey()), consumer);
+                this.plugin.getConfiguration().get(ConfigKeys.WORLD_REWRITES).rewriteAndSubmit(getContextKey(((ServerWorld) world).key()), consumer);
             }
         }
 
         if (subject instanceof ValueContainer) {
             ValueContainer valueContainer = (ValueContainer) subject;
-            valueContainer.get(Keys.GAME_MODE).ifPresent(mode -> consumer.accept(DefaultContextKeys.GAMEMODE_KEY, getContextKey(mode.getKey())));
+            valueContainer.get(Keys.GAME_MODE).ifPresent(mode -> consumer.accept(DefaultContextKeys.GAMEMODE_KEY, getContextKey(mode.key(RegistryTypes.GAME_MODE))));
         }
     }
 
@@ -83,15 +79,15 @@ public class SpongePlayerCalculator implements ContextCalculator<Subject> {
         ImmutableContextSet.Builder builder = new ImmutableContextSetImpl.BuilderImpl();
         Game game = this.plugin.getBootstrap().getGame();
 
-        for (GameMode mode : game.getRegistry().getCatalogRegistry().getAllOf(CatalogTypes.GAME_MODE)) {
-            builder.add(DefaultContextKeys.GAMEMODE_KEY, getContextKey(mode.getKey()));
-        }
-        for (DimensionType dim : game.getRegistry().getCatalogRegistry().getAllOf(CatalogTypes.DIMENSION_TYPE)) {
-            builder.add(DefaultContextKeys.DIMENSION_TYPE_KEY, getContextKey(dim.getKey()));
-        }
+        game.registry(RegistryTypes.GAME_MODE).stream().forEach(mode -> {
+            builder.add(DefaultContextKeys.GAMEMODE_KEY, getContextKey(mode.key(RegistryTypes.GAME_MODE)));
+        });
+        game.registry(RegistryTypes.WORLD_TYPE).stream().forEach(dim -> {
+            builder.add(DefaultContextKeys.DIMENSION_TYPE_KEY, getContextKey(dim.key(RegistryTypes.WORLD_TYPE)));
+        });
         if (game.isServerAvailable()) {
-            for (ServerWorld world : game.getServer().getWorldManager().getWorlds()) {
-                String worldName = getContextKey(world.getKey());
+            for (ServerWorld world : game.server().worldManager().worlds()) {
+                String worldName = getContextKey(world.key());
                 if (Context.isValidValue(worldName)) {
                     builder.add(DefaultContextKeys.WORLD_KEY, worldName);
                 }
@@ -102,15 +98,15 @@ public class SpongePlayerCalculator implements ContextCalculator<Subject> {
     }
 
     private static String getContextKey(ResourceKey key) {
-        if (key.getNamespace().equals("minecraft")) {
-            return key.getValue();
+        if (key.namespace().equals("minecraft")) {
+            return key.value();
         }
-        return key.getFormatted();
+        return key.formatted();
     }
 
     @Listener(order = Order.LAST)
     public void onWorldChange(ChangeEntityWorldEvent.Post e) {
-        Entity targetEntity = e.getEntity();
+        Entity targetEntity = e.entity();
         if (!(targetEntity instanceof Subject)) {
             return;
         }
@@ -118,11 +114,12 @@ public class SpongePlayerCalculator implements ContextCalculator<Subject> {
         this.plugin.getContextManager().signalContextUpdate((Subject) targetEntity);
     }
 
-    @Listener(order = Order.LAST)
-    public void onGameModeChange(ChangeGameModeEvent e) {
-        Humanoid targetEntity = e.getHumanoid();
-        if (targetEntity instanceof Subject) {
-            this.plugin.getContextManager().signalContextUpdate((Subject) targetEntity);
-        }
-    }
+    // TODO: find replacement
+    //@Listener(order = Order.LAST)
+    //public void onGameModeChange(ChangeGameModeEvent e) {
+    //    Humanoid targetEntity = e.getHumanoid();
+    //    if (targetEntity instanceof Subject) {
+    //        this.plugin.getContextManager().signalContextUpdate((Subject) targetEntity);
+    //    }
+    //}
 }

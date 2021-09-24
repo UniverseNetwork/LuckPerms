@@ -26,13 +26,12 @@
 package me.lucko.luckperms.sponge.service.proxy.api8;
 
 import me.lucko.luckperms.common.util.ImmutableCollectors;
-import me.lucko.luckperms.sponge.service.CompatibilityUtil;
 import me.lucko.luckperms.sponge.service.model.LPProxiedServiceObject;
 import me.lucko.luckperms.sponge.service.model.LPSubject;
 import me.lucko.luckperms.sponge.service.model.LPSubjectCollection;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
-import org.spongepowered.api.service.context.Context;
+import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.service.permission.Subject;
 import org.spongepowered.api.service.permission.SubjectCollection;
 import org.spongepowered.api.service.permission.SubjectReference;
@@ -54,12 +53,12 @@ public final class SubjectCollectionProxy implements SubjectCollection, LPProxie
     }
 
     @Override
-    public @NonNull String getIdentifier() {
+    public @NonNull String identifier() {
         return this.handle.getIdentifier();
     }
 
     @Override
-    public @NonNull Predicate<String> getIdentifierValidityPredicate() {
+    public @NonNull Predicate<String> identifierValidityPredicate() {
         return this.handle.getIdentifierValidityPredicate();
     }
 
@@ -69,7 +68,7 @@ public final class SubjectCollectionProxy implements SubjectCollection, LPProxie
     }
 
     @Override
-    public @NonNull Optional<Subject> getSubject(@NonNull String s) {
+    public @NonNull Optional<Subject> subject(@NonNull String s) {
         return this.handle.getSubject(s).map(LPSubject::sponge);
     }
 
@@ -79,18 +78,18 @@ public final class SubjectCollectionProxy implements SubjectCollection, LPProxie
     }
 
     @Override
-    public @NonNull CompletableFuture<Map<String, Subject>> loadSubjects(@NonNull Set<String> set) {
+    public @NonNull CompletableFuture<Map<String, Subject>> loadSubjects(@NonNull Iterable<String> set) {
         return this.handle.loadSubjects(set).thenApply(subs -> subs.stream().collect(ImmutableCollectors.toMap(LPSubject::getIdentifier, LPSubject::sponge)));
     }
 
     @Override
-    public @NonNull Collection<Subject> getLoadedSubjects() {
+    public @NonNull Collection<Subject> loadedSubjects() {
         return this.handle.getLoadedSubjects().stream().map(LPSubject::sponge).collect(ImmutableCollectors.toSet());
     }
 
     @SuppressWarnings("rawtypes")
     @Override
-    public @NonNull CompletableFuture<Set<String>> getAllIdentifiers() {
+    public @NonNull CompletableFuture<Set<String>> allIdentifiers() {
         return (CompletableFuture) this.handle.getAllIdentifiers();
     }
 
@@ -101,23 +100,23 @@ public final class SubjectCollectionProxy implements SubjectCollection, LPProxie
             throw new IllegalArgumentException("Subject identifier '" + subjectIdentifier + "' does not pass the validity predicate");
         }
 
-        return this.handle.getService().getReferenceFactory().obtain(getIdentifier(), subjectIdentifier);
+        return this.handle.getService().getReferenceFactory().obtain(identifier(), subjectIdentifier);
     }
 
     @SuppressWarnings("rawtypes")
     @Override
-    public @NonNull CompletableFuture<Map<SubjectReference, Boolean>> getAllWithPermission(@NonNull String s) {
+    public @NonNull CompletableFuture<Map<SubjectReference, Boolean>> allWithPermission(@NonNull String s) {
         return (CompletableFuture) this.handle.getAllWithPermission(s);
     }
 
     @SuppressWarnings("rawtypes")
     @Override
-    public @NonNull CompletableFuture<Map<SubjectReference, Boolean>> getAllWithPermission(@NonNull Set<Context> set, @NonNull String s) {
-        return (CompletableFuture) this.handle.getAllWithPermission(CompatibilityUtil.convertContexts(set), s);
+    public @NonNull CompletableFuture<Map<SubjectReference, Boolean>> allWithPermission(@NonNull String s, @NonNull Cause cause) {
+        return (CompletableFuture) this.handle.getAllWithPermission(this.handle.getService().getContextsForCause(cause), s);
     }
 
     @Override
-    public @NonNull Map<Subject, Boolean> getLoadedWithPermission(@NonNull String s) {
+    public @NonNull Map<Subject, Boolean> loadedWithPermission(@NonNull String s) {
         return this.handle.getLoadedWithPermission(s).entrySet().stream()
                 .collect(ImmutableCollectors.toMap(
                         sub -> sub.getKey().sponge(),
@@ -126,8 +125,8 @@ public final class SubjectCollectionProxy implements SubjectCollection, LPProxie
     }
 
     @Override
-    public @NonNull Map<Subject, Boolean> getLoadedWithPermission(@NonNull Set<Context> set, @NonNull String s) {
-        return this.handle.getLoadedWithPermission(CompatibilityUtil.convertContexts(set), s).entrySet().stream()
+    public @NonNull Map<Subject, Boolean> loadedWithPermission(@NonNull String s, @NonNull Cause cause) {
+        return this.handle.getLoadedWithPermission(this.handle.getService().getContextsForCause(cause), s).entrySet().stream()
                 .collect(ImmutableCollectors.toMap(
                         sub -> sub.getKey().sponge(),
                         Map.Entry::getValue
@@ -135,7 +134,7 @@ public final class SubjectCollectionProxy implements SubjectCollection, LPProxie
     }
 
     @Override
-    public @NonNull Subject getDefaults() {
+    public @NonNull Subject defaults() {
         return this.handle.getDefaults().sponge();
     }
 

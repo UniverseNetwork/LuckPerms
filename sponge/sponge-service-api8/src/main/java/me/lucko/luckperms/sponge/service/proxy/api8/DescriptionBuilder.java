@@ -48,10 +48,10 @@ import java.util.Objects;
 public final class DescriptionBuilder implements PermissionDescription.Builder, LPProxiedServiceObject {
 
     public static LPPermissionDescription registerDescription(LPPermissionService service, PermissionDescription description) {
-        if (!description.getOwner().isPresent()) {
+        if (!description.owner().isPresent()) {
             return null;
         }
-        return service.registerPermissionDescription(description.getId(), description.getDescription().orElse(null), description.getOwner().get());
+        return service.registerPermissionDescription(description.id(), description.description().orElse(null), description.owner().get());
     }
 
     private final @NonNull LPPermissionService service;
@@ -82,6 +82,11 @@ public final class DescriptionBuilder implements PermissionDescription.Builder, 
         Objects.requireNonNull(role, "role");
         this.roles.put(role, Tristate.of(value));
         return this;
+    }
+
+    @Override
+    public PermissionDescription.Builder defaultValue(org.spongepowered.api.util.Tristate defaultValue) {
+        throw new UnsupportedOperationException("LuckPerms does not support assigning a default value to permission descriptions");
     }
 
     @Override
@@ -121,13 +126,7 @@ public final class DescriptionBuilder implements PermissionDescription.Builder, 
 
     @Override
     public int hashCode() {
-        final int PRIME = 59;
-        int result = 1;
-        result = result * PRIME + this.container.hashCode();
-        result = result * PRIME + this.roles.hashCode();
-        result = result * PRIME + (this.id == null ? 43 : this.id.hashCode());
-        result = result * PRIME + (this.description == null ? 43 : this.description.hashCode());
-        return result;
+        return Objects.hash(this.container, this.roles, this.id, this.description);
     }
 
     @Override
