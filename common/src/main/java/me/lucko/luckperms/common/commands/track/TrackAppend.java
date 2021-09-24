@@ -26,7 +26,6 @@
 package me.lucko.luckperms.common.commands.track;
 
 import me.lucko.luckperms.common.actionlog.LoggedAction;
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.ChildCommand;
 import me.lucko.luckperms.common.command.access.ArgumentPermissions;
 import me.lucko.luckperms.common.command.access.CommandPermission;
@@ -46,6 +45,7 @@ import me.lucko.luckperms.common.util.Predicates;
 import net.luckperms.api.model.data.DataMutateResult;
 
 import java.util.List;
+import java.util.Locale;
 
 public class TrackAppend extends ChildCommand<Track> {
     public TrackAppend() {
@@ -53,21 +53,21 @@ public class TrackAppend extends ChildCommand<Track> {
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, Track target, ArgumentList args, String label) {
+    public void execute(LuckPermsPlugin plugin, Sender sender, Track target, ArgumentList args, String label) {
         if (ArgumentPermissions.checkModifyPerms(plugin, sender, getPermission().get(), target)) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
-        String groupName = args.get(0).toLowerCase();
+        String groupName = args.get(0).toLowerCase(Locale.ROOT);
         if (!DataConstraints.GROUP_NAME_TEST.test(groupName)) {
             sendDetailedUsage(sender, label);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         Group group = StorageAssistant.loadGroup(groupName, sender, plugin, false);
         if (group == null) {
-            return CommandResult.LOADING_ERROR;
+            return;
         }
 
         DataMutateResult result = target.appendGroup(group);
@@ -83,10 +83,8 @@ public class TrackAppend extends ChildCommand<Track> {
                     .build().submit(plugin, sender);
 
             StorageAssistant.save(target, sender, plugin);
-            return CommandResult.SUCCESS;
         } else {
             Message.TRACK_ALREADY_CONTAINS.send(sender, target.getName(), group);
-            return CommandResult.STATE_ERROR;
         }
     }
 

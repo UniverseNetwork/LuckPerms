@@ -28,7 +28,6 @@ package me.lucko.luckperms.sponge.commands;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.ChildCommand;
 import me.lucko.luckperms.common.command.abstraction.Command;
 import me.lucko.luckperms.common.command.abstraction.CommandException;
@@ -46,6 +45,7 @@ import me.lucko.luckperms.sponge.service.model.LPSubjectData;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -83,7 +83,7 @@ public class SpongeParentCommand extends Command<Void> {
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, Void v, ArgumentList args, String label) {
+    public void execute(LuckPermsPlugin plugin, Sender sender, Void v, ArgumentList args, String label) {
         LuckPermsService service = this.plugin.getService();
 
         if (args.size() < 1) {
@@ -93,14 +93,14 @@ public class SpongeParentCommand extends Command<Void> {
                                 .sorted()
                                 .collect(Collectors.toList())
                         ));
-            return CommandResult.SUCCESS;
+            return;
         }
 
         String subjectCollection = args.get(0);
 
         if (subjectCollection.equalsIgnoreCase("user") || subjectCollection.equalsIgnoreCase("group")) {
             SpongeCommandUtils.sendPrefixed(sender, "Please use the main LuckPerms commands to edit users and groups.");
-            return CommandResult.STATE_ERROR;
+            return;
         }
 
         if (service.getLoadedCollections().keySet().stream().map(String::toLowerCase).noneMatch(s -> s.equalsIgnoreCase(subjectCollection))) {
@@ -123,24 +123,24 @@ public class SpongeParentCommand extends Command<Void> {
                 SpongeCommandUtils.sendPrefixed(sender, "&aCurrent Subjects:\n" + SpongeCommandUtils.toCommaSep(subjects));
             }
 
-            return CommandResult.SUCCESS;
+            return;
         }
 
         if (args.size() < 4) {
             sendDetailedUsage(sender, label);
-            return CommandResult.SUCCESS;
+            return;
         }
 
         boolean persistent = true;
-        if (args.get(2).toLowerCase().startsWith("-t")) {
+        if (args.get(2).toLowerCase(Locale.ROOT).startsWith("-t")) {
             persistent = false;
             args.remove(2);
         }
 
-        String type = args.get(2).toLowerCase();
+        String type = args.get(2).toLowerCase(Locale.ROOT);
         if (!type.equals("permission") && !type.equals("parent") && !type.equals("option")) {
             sendDetailedUsage(sender, label);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         String cmd = args.get(3);
@@ -151,17 +151,17 @@ public class SpongeParentCommand extends Command<Void> {
 
         if (sub == null) {
             sendDetailedUsage(sender, label);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         if (!sub.isAuthorized(sender)) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         if (sub.getArgumentCheck().test(args.size() - 4)) {
             sub.sendDetailedUsage(sender, label);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         String subjectId = args.get(1);
@@ -172,13 +172,11 @@ public class SpongeParentCommand extends Command<Void> {
         LPSubject subject = collection.loadSubject(subjectId).join();
         LPSubjectData subjectData = persistent ? subject.getSubjectData() : subject.getTransientSubjectData();
 
-        CommandResult result;
         try {
-            result = sub.execute(plugin, sender, subjectData, args.subList(4, args.size()), label);
+            sub.execute(plugin, sender, subjectData, args.subList(4, args.size()), label);
         } catch (CommandException e) {
-            result = e.handle(sender, label, sub);
+            e.handle(sender, label, sub);
         }
-        return result;
     }
 
     @Override
@@ -190,7 +188,7 @@ public class SpongeParentCommand extends Command<Void> {
     public void sendDetailedUsage(Sender sender, String label) {
         SpongeCommandUtils.sendPrefixed(sender, "&b" + getName() + " Sub Commands: &7(" + String.format("/%s sponge <collection> <subject> [-transient]", label) + " ...)");
         for (String s : Arrays.asList("Permission", "Parent", "Option")) {
-            List<Command<?>> subs = this.children.get(s.toLowerCase()).stream()
+            List<Command<?>> subs = this.children.get(s.toLowerCase(Locale.ROOT)).stream()
                     .filter(sub -> sub.isAuthorized(sender))
                     .collect(Collectors.toList());
 

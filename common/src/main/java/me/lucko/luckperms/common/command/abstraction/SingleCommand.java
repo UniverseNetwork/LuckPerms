@@ -25,7 +25,6 @@
 
 package me.lucko.luckperms.common.command.abstraction;
 
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.access.CommandPermission;
 import me.lucko.luckperms.common.command.spec.Argument;
 import me.lucko.luckperms.common.command.spec.CommandSpec;
@@ -39,6 +38,7 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -52,18 +52,18 @@ public abstract class SingleCommand extends Command<Void> {
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, Void ignored, ArgumentList args, String label) throws CommandException {
-        return execute(plugin, sender, args, label);
+    public final void execute(LuckPermsPlugin plugin, Sender sender, Void ignored, ArgumentList args, String label) throws CommandException {
+        execute(plugin, sender, args, label);
     }
 
-    public abstract CommandResult execute(LuckPermsPlugin plugin, Sender sender, ArgumentList args, String label) throws CommandException;
+    public abstract void execute(LuckPermsPlugin plugin, Sender sender, ArgumentList args, String label) throws CommandException;
 
     @Override
     public void sendUsage(Sender sender, String label) {
         TextComponent.Builder builder = Component.text()
                 .append(Component.text('>', NamedTextColor.DARK_AQUA))
                 .append(Component.space())
-                .append(Component.text(getName().toLowerCase(), NamedTextColor.GREEN));
+                .append(Component.text(getName().toLowerCase(Locale.ROOT), NamedTextColor.GREEN));
 
         if (getArgs().isPresent()) {
             List<Component> argUsages = getArgs().get().stream()

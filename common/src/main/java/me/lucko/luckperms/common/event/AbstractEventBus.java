@@ -93,14 +93,14 @@ public abstract class AbstractEventBus<P> implements EventBus, AutoCloseable {
     }
 
     @Override
-    public @NonNull <T extends LuckPermsEvent> EventSubscription<T> subscribe(@NonNull Class<T> eventClass, @NonNull Consumer<? super T> handler) {
+    public <T extends LuckPermsEvent> @NonNull EventSubscription<T> subscribe(@NonNull Class<T> eventClass, @NonNull Consumer<? super T> handler) {
         Objects.requireNonNull(eventClass, "eventClass");
         Objects.requireNonNull(handler, "handler");
         return registerSubscription(eventClass, handler, null);
     }
 
     @Override
-    public @NonNull <T extends LuckPermsEvent> EventSubscription<T> subscribe(Object plugin, @NonNull Class<T> eventClass, @NonNull Consumer<? super T> handler) {
+    public <T extends LuckPermsEvent> @NonNull EventSubscription<T> subscribe(Object plugin, @NonNull Class<T> eventClass, @NonNull Consumer<? super T> handler) {
         Objects.requireNonNull(plugin, "plugin");
         Objects.requireNonNull(eventClass, "eventClass");
         Objects.requireNonNull(handler, "handler");
@@ -122,7 +122,7 @@ public abstract class AbstractEventBus<P> implements EventBus, AutoCloseable {
     }
 
     @Override
-    public @NonNull <T extends LuckPermsEvent> Set<EventSubscription<T>> getSubscriptions(@NonNull Class<T> eventClass) {
+    public <T extends LuckPermsEvent> @NonNull Set<EventSubscription<T>> getSubscriptions(@NonNull Class<T> eventClass) {
         return this.bus.getHandlers(eventClass);
     }
 
@@ -163,7 +163,7 @@ public abstract class AbstractEventBus<P> implements EventBus, AutoCloseable {
             //noinspection unchecked
             return super.subscribers().values().stream()
                     .filter(s -> s instanceof EventSubscription && ((EventSubscription<?>) s).getEventClass().isAssignableFrom(eventClass))
-                    .map(s -> ((EventSubscription<T>) s))
+                    .map(s -> (EventSubscription<T>) s)
                     .collect(Collectors.toSet());
         }
     }

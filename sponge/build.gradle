@@ -1,6 +1,5 @@
 plugins {
-    id 'net.kyori.blossom' version '1.1.0'
-    id 'com.github.johnrengelman.shadow' version '2.0.4'
+    id 'com.github.johnrengelman.shadow' version '7.0.0'
 }
 
 repositories {
@@ -24,7 +23,6 @@ dependencies {
         exclude(module: 'configurate-gson')
         exclude(module: 'configurate-yaml')
     }
-    compileOnly 'me.lucko:adventure-platform-spongeapi:4.0.0' // re: this artifact - see note in common/build.gradle
 }
 
 processResources {
@@ -35,7 +33,7 @@ processResources {
 }
 
 shadowJar {
-    archiveName = "LuckPerms-Sponge-${project.ext.fullVersion}.jar"
+    archiveFileName = "LuckPerms-Sponge-${project.ext.fullVersion}.jar"
 
     dependencies {
         include(dependency('net.luckperms:.*'))
@@ -56,6 +54,7 @@ shadowJar {
     relocate 'com.mongodb', 'me.lucko.luckperms.lib.mongodb'
     relocate 'org.bson', 'me.lucko.luckperms.lib.bson'
     relocate 'redis.clients.jedis', 'me.lucko.luckperms.lib.jedis'
+    relocate 'com.rabbitmq', 'me.lucko.luckperms.lib.rabbitmq'
     relocate 'org.apache.commons.pool2', 'me.lucko.luckperms.lib.commonspool2'
     relocate 'ninja.leaping.configurate', 'me.lucko.luckperms.lib.configurate'
 }

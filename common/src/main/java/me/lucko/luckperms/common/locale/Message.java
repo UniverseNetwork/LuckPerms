@@ -60,6 +60,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.stream.Collectors;
@@ -163,6 +164,12 @@ public interface Message {
             .key("luckperms.commandsystem.no-permission-subcommands")
             .color(DARK_AQUA)
             .append(FULL_STOP)
+    );
+
+    Args0 ALREADY_EXECUTING_COMMAND = () -> prefixed(translatable()
+            // "&7Another command is being executed, waiting for it to finish..."
+            .key("luckperms.commandsystem.already-executing-command")
+            .color(GRAY)
     );
 
     Args2<String, String> FIRST_TIME_SETUP = (label, username) -> join(newline(),
@@ -1044,18 +1051,6 @@ public interface Message {
             .append(FULL_STOP)
     );
 
-    Args3<User, String, Tristate> CHECK_RESULT = (user, permission, result) -> prefixed(translatable()
-            // "&aPermission check result on user &b{}&a for permission &b{}&a: &f{}"
-            .color(GREEN)
-            .key("luckperms.command.check.result")
-            .args(
-                    text().color(AQUA).append(user.getFormattedDisplayName()),
-                    text(permission, AQUA)
-            )
-            .append(text(": "))
-            .append(formatTristate(result))
-    );
-
     Args1<Component> CREATE_SUCCESS = name -> prefixed(translatable()
             // "&b{}&a was successfully created."
             .color(GREEN)
@@ -1727,39 +1722,127 @@ public interface Message {
             .append(FULL_STOP)
     );
 
-    Args4<PermissionHolder, String, Tristate, ContextSet> CHECK_PERMISSION = (holder, permission, value, context) -> prefixed(translatable()
-            // "&b{}&a has permission &b{}&a set to {}&a in context {}&a."
-            .key("luckperms.command.generic.permission.check-inherits")
+    Args1<String> PERMISSION_CHECK_INFO_HEADER = permission -> prefixed(translatable()
+            // &aPermission information for &b{}&a:
+            .key("luckperms.command.generic.permission.check.info.title")
             .color(GREEN)
-            .args(
-                    text().color(AQUA).append(holder.getFormattedDisplayName()),
-                    text(permission, AQUA),
-                    formatTristate(value),
-                    formatContextSet(context)
-            )
-            .append(FULL_STOP)
+            .args(text(permission, AQUA))
+            .append(text(':'))
     );
 
-    Args5<PermissionHolder, String, Tristate, ContextSet, String> CHECK_INHERITS_PERMISSION = (holder, permission, value, context, inheritedFrom) -> prefixed(translatable()
-            // "&b{}&a has permission &b{}&a set to {}&a in context {}&a. &7(inherited from &a{}&7)"
-            .key("luckperms.command.generic.permission.check-inherits")
-            .color(GREEN)
-            .args(
-                    text().color(AQUA).append(holder.getFormattedDisplayName()),
-                    text(permission, AQUA),
-                    formatTristate(value),
-                    formatContextSet(context)
-            )
-            .append(FULL_STOP)
+    Args4<PermissionHolder, String, Tristate, ContextSet> PERMISSION_CHECK_INFO_DIRECTLY = (holder, permission, value, context) -> prefixed(text()
+            // &f- &b{}&3 has &b{}&3 set to {}&3 in context {}&3.
+            .append(text('-', WHITE))
             .append(space())
-            .append(text()
+            .append(translatable()
+                    .key("luckperms.command.generic.permission.check.info.directly")
                     .color(GRAY)
-                    .append(OPEN_BRACKET)
-                    .append(translatable("luckperms.command.generic.info.inherited-from"))
-                    .append(space())
-                    .append(text(inheritedFrom, GREEN))
-                    .append(CLOSE_BRACKET)
+                    .args(
+                            text().color(AQUA).append(holder.getFormattedDisplayName()),
+                            text(permission, AQUA),
+                            formatTristate(value),
+                            formatContextSet(context)
+                    )
+                    .append(FULL_STOP)
             )
+    );
+
+
+    Args5<PermissionHolder, String, Tristate, ContextSet, String> PERMISSION_CHECK_INFO_INHERITED = (holder, permission, value, context, inheritedFrom) -> prefixed(text()
+            // &f- &b{}&3 inherits &b{}&3 set to {}&3 from &a{}&3 in context {}&3.
+            .append(text('-', WHITE))
+            .append(space())
+            .append(translatable()
+                    .key("luckperms.command.generic.permission.check.info.inherited")
+                    .color(GRAY)
+                    .args(
+                            text().color(AQUA).append(holder.getFormattedDisplayName()),
+                            text(permission, AQUA),
+                            formatTristate(value),
+                            text(inheritedFrom, GREEN),
+                            formatContextSet(context)
+                    )
+                    .append(FULL_STOP)
+            )
+    );
+
+    Args2<PermissionHolder, String> PERMISSION_CHECK_INFO_NOT_DIRECTLY = (holder, permission) -> prefixed(text()
+            // &f- &b{}&3 does not have &b{}&3 set.
+            .append(text('-', WHITE))
+            .append(space())
+            .append(translatable()
+                    .key("luckperms.command.generic.permission.check.info.not-directly")
+                    .color(GRAY)
+                    .args(
+                            text().color(AQUA).append(holder.getFormattedDisplayName()),
+                            text(permission, AQUA)
+                    )
+                    .append(FULL_STOP)
+            )
+    );
+
+    Args2<PermissionHolder, String> PERMISSION_CHECK_INFO_NOT_INHERITED = (holder, permission) -> prefixed(text()
+            // &f- &b{}&3 does not inherit &b{}&3.
+            .append(text('-', WHITE))
+            .append(space())
+            .append(translatable()
+                    .key("luckperms.command.generic.permission.check.info.not-inherited")
+                    .color(GRAY)
+                    .args(
+                            text().color(AQUA).append(holder.getFormattedDisplayName()),
+                            text(permission, AQUA)
+                    )
+                    .append(FULL_STOP)
+            )
+    );
+
+    Args5<String, Tristate, String, String, ContextSet> PERMISSION_CHECK_RESULT = (permission, result, processor, cause, context) -> join(newline(),
+            // &aPermission check for &b{}&a:
+            //     &3Result: {}
+            //     &3Processor: &f{}
+            //     &3Cause: &f{}
+            //     &3Context: {}
+            prefixed(translatable()
+                    .key("luckperms.command.generic.permission.check.result.title")
+                    .color(GREEN)
+                    .args(text(permission, AQUA))
+                    .append(text(':'))),
+            prefixed(text()
+                    .color(DARK_AQUA)
+                    .append(text("    "))
+                    .append(translatable("luckperms.command.generic.permission.check.result.result-key"))
+                    .append(text(": "))
+                    .append(formatTristate(result))),
+            prefixed(text()
+                    .color(DARK_AQUA)
+                    .append(text("    "))
+                    .append(translatable("luckperms.command.generic.permission.check.result.processor-key"))
+                    .append(text(": "))
+                    .apply(builder -> {
+                        if (processor == null) {
+                            builder.append(translatable("luckperms.command.misc.none", AQUA));
+                        } else {
+                            builder.append(text(processor, WHITE));
+                        }
+                    })),
+            prefixed(text()
+                    .color(DARK_AQUA)
+                    .append(text("    "))
+                    .append(translatable("luckperms.command.generic.permission.check.result.cause-key"))
+                    .append(text(": "))
+                    .apply(builder -> {
+                        if (cause == null) {
+                            builder.append(translatable("luckperms.command.misc.none", AQUA));
+                        } else {
+                            builder.append(text(cause, WHITE));
+                        }
+                    })),
+            prefixed(text()
+                    .color(DARK_AQUA)
+                    .append(text("    "))
+                    .append(translatable("luckperms.command.generic.permission.check.result.context-key"))
+                    .append(text(": "))
+                    .append(formatContextSetBracketed(context, translatable("luckperms.command.misc.none", AQUA))))
     );
 
     Args4<String, Boolean, PermissionHolder, ContextSet> SETPERMISSION_SUCCESS = (permission, value, holder, context) -> prefixed(translatable()
@@ -1873,6 +1956,13 @@ public interface Message {
                     text(permission, AQUA),
                     formatContextSet(context)
             )
+            .append(FULL_STOP)
+    );
+
+    Args0 PERMISSION_INVALID_ENTRY_EMPTY = () -> prefixed(translatable()
+            // "&cThe empty string is not a valid permission."
+            .key("luckperms.command.misc.permission-invalid-empty")
+            .color(RED)
             .append(FULL_STOP)
     );
 
@@ -2155,7 +2245,14 @@ public interface Message {
                     .append(space())
                     .append(formatContextSetBracketed(node.getContexts(), empty()))
                     .apply(builder -> {
-                        String holderName = holder.getType() == HolderType.GROUP ? holder.getObjectName() : holder.getPlainDisplayName();
+                        InheritanceOriginMetadata origin = node.metadata(InheritanceOriginMetadata.KEY);
+                        String originName;
+                        if (origin.wasInherited(holder.getIdentifier())) {
+                            originName = origin.getOrigin().getName();
+                        } else {
+                            originName = holder.getPlainDisplayName();
+                        }
+                        HolderType originType = HolderType.valueOf(origin.getOrigin().getType().toUpperCase(Locale.ROOT));
                         boolean explicitGlobalContext = !holder.getPlugin().getConfiguration().getContextsFile().getDefaultContexts().isEmpty();
 
                         Component hover = join(newline(),
@@ -2169,10 +2266,10 @@ public interface Message {
                                 translatable()
                                         .key("luckperms.command.generic.chat-meta.info.click-to-remove")
                                         .color(GRAY)
-                                        .args(text(node.getMetaType().toString()), text(holderName))
+                                        .args(text(node.getMetaType().toString()), text(originName))
                         );
 
-                        String command = "/" + label + " " + NodeCommandFactory.undoCommand(node, holderName, holder.getType(), explicitGlobalContext);
+                        String command = "/" + label + " " + NodeCommandFactory.undoCommand(node, originName, originType, explicitGlobalContext);
 
                         builder.hoverEvent(HoverEvent.showText(hover));
                         builder.clickEvent(ClickEvent.suggestCommand(command));
@@ -2223,7 +2320,14 @@ public interface Message {
                     .append(space())
                     .append(formatContextSetBracketed(node.getContexts(), empty()))
                     .apply(builder -> {
-                        String holderName = holder.getType() == HolderType.GROUP ? holder.getObjectName() : holder.getPlainDisplayName();
+                        InheritanceOriginMetadata origin = node.metadata(InheritanceOriginMetadata.KEY);
+                        String originName;
+                        if (origin.wasInherited(holder.getIdentifier())) {
+                            originName = origin.getOrigin().getName();
+                        } else {
+                            originName = holder.getPlainDisplayName();
+                        }
+                        HolderType originType = HolderType.valueOf(origin.getOrigin().getType().toUpperCase(Locale.ROOT));
                         boolean explicitGlobalContext = !holder.getPlugin().getConfiguration().getContextsFile().getDefaultContexts().isEmpty();
 
                         Component hover = join(newline(),
@@ -2237,10 +2341,10 @@ public interface Message {
                                 translatable()
                                         .key("luckperms.command.generic.meta.info.click-to-remove")
                                         .color(GRAY)
-                                        .args(text(holderName))
+                                        .args(text(originName))
                         );
 
-                        String command = "/" + label + " " + NodeCommandFactory.undoCommand(node, holderName, holder.getType(), explicitGlobalContext);
+                        String command = "/" + label + " " + NodeCommandFactory.undoCommand(node, originName, originType, explicitGlobalContext);
 
                         builder.hoverEvent(HoverEvent.showText(hover));
                         builder.clickEvent(ClickEvent.suggestCommand(command));
@@ -2721,7 +2825,7 @@ public interface Message {
             // "&aInstalling language {}..."
             .key("luckperms.command.translations.installing-specific")
             .color(GREEN)
-            .args(text((name)))
+            .args(text(name))
     );
 
     Args0 TRANSLATIONS_INSTALL_COMPLETE = () -> prefixed(translatable()
@@ -2984,7 +3088,7 @@ public interface Message {
 
     Args2<User, String> USER_PROMOTE_NOT_ON_TRACK = (user, track) -> prefixed(translatable()
             // "&b{}&a isn't in any groups on &b{}&a, so was not promoted."
-            .key("luckperms.command.user.demote.end-of-track-not-removed")
+            .key("luckperms.command.user.promote.not-on-track")
             .color(GREEN)
             .args(
                     text().color(AQUA).append(user.getFormattedDisplayName()),

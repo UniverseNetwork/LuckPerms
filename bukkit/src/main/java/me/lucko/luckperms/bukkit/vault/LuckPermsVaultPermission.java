@@ -31,7 +31,7 @@ import me.lucko.luckperms.bukkit.LPBukkitPlugin;
 import me.lucko.luckperms.bukkit.context.BukkitContextManager;
 import me.lucko.luckperms.common.cacheddata.type.MetaCache;
 import me.lucko.luckperms.common.cacheddata.type.PermissionCache;
-import me.lucko.luckperms.common.calculator.processor.MapProcessor;
+import me.lucko.luckperms.common.calculator.processor.DirectProcessor;
 import me.lucko.luckperms.common.calculator.result.TristateResult;
 import me.lucko.luckperms.common.config.ConfigKeys;
 import me.lucko.luckperms.common.model.Group;
@@ -59,6 +59,7 @@ import net.milkbowl.vault.permission.Permission;
 import org.bukkit.entity.Player;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -113,15 +114,7 @@ public class LuckPermsVaultPermission extends AbstractVaultPermission {
 
         // are we on the main thread?
         if (!this.plugin.getBootstrap().isServerStarting() && this.plugin.getBootstrap().getServer().isPrimaryThread() && !this.plugin.getConfiguration().get(ConfigKeys.VAULT_UNSAFE_LOOKUPS)) {
-            throw new RuntimeException(
-                    "The operation to lookup a UUID for '" + player + "' was cancelled by LuckPerms. This is NOT a bug. \n" +
-                    "The lookup request was made on the main server thread. It is not safe to execute a request to \n" +
-                    "load username data from the database in this context. \n" +
-                    "If you are a plugin author, please either make your request asynchronously, \n" +
-                    "or provide an 'OfflinePlayer' object with the UUID already populated. \n" +
-                    "Alternatively, server admins can disable this catch by setting 'vault-unsafe-lookups' to true \n" +
-                    "in the LP config, but should consider the consequences (lag) before doing so."
-            );
+            throw new ServerThreadLookupException(player);
         }
 
         // lookup a username from the database
@@ -159,14 +152,7 @@ public class LuckPermsVaultPermission extends AbstractVaultPermission {
 
         // are we on the main thread?
         if (!this.plugin.getBootstrap().isServerStarting() && this.plugin.getBootstrap().getServer().isPrimaryThread() && !this.plugin.getConfiguration().get(ConfigKeys.VAULT_UNSAFE_LOOKUPS)) {
-            throw new RuntimeException(
-                    "The operation to load user data for '" + uuid + "' was cancelled by LuckPerms. This is NOT a bug. \n" +
-                    "The lookup request was made on the main server thread. It is not safe to execute a request to \n" +
-                    "load data for offline players from the database in this context. \n" +
-                    "If you are a plugin author, please consider making your request asynchronously. \n" +
-                    "Alternatively, server admins can disable this catch by setting 'vault-unsafe-lookups' to true \n" +
-                    "in the LP config, but should consider the consequences (lag) before doing so."
-            );
+            throw new ServerThreadLookupException(uuid);
         }
 
         // load an instance from the DB
@@ -225,7 +211,7 @@ public class LuckPermsVaultPermission extends AbstractVaultPermission {
         PermissionCache permissionData = user.getCachedData().getPermissionData(queryOptions);
 
         TristateResult result = permissionData.checkPermission(Inheritance.key(rewriteGroupName(group)), PermissionCheckEvent.Origin.THIRD_PARTY_API);
-        return result.processorClass() == MapProcessor.class && result.result().asBoolean();
+        return result.processorClass() == DirectProcessor.class && result.result().asBoolean();
     }
 
     @Override
@@ -269,6 +255,9 @@ public class LuckPermsVaultPermission extends AbstractVaultPermission {
         QueryOptions queryOptions = getQueryOptions(uuid, world);
         MetaCache metaData = user.getCachedData().getMetaData(queryOptions);
         String value = metaData.getPrimaryGroup(MetaCheckEvent.Origin.THIRD_PARTY_API);
+        if (value == null) {
+            return null;
+        }
 
         Group group = getGroup(value);
         return group != null ? groupName(group) : value;
@@ -360,7 +349,7 @@ public class LuckPermsVaultPermission extends AbstractVaultPermission {
             // remove already accumulated worlds
             context.removeAll(DefaultContextKeys.WORLD_KEY);
             // add the vault world
-            context.add(DefaultContextKeys.WORLD_KEY, world.toLowerCase());
+            context.add(DefaultContextKeys.WORLD_KEY, world.toLowerCase(Locale.ROOT));
         }
 
         // if we're using a special vault server

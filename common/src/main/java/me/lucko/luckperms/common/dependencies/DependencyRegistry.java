@@ -82,6 +82,10 @@ public class DependencyRegistry {
             dependencies.add(Dependency.SLF4J_SIMPLE);
         }
 
+        if (this.plugin.getConfiguration().get(ConfigKeys.RABBITMQ_ENABLED)) {
+            dependencies.add(Dependency.RABBITMQ);
+        }
+
         // don't load slf4j if it's already present
         if ((dependencies.contains(Dependency.SLF4J_API) || dependencies.contains(Dependency.SLF4J_SIMPLE)) && slf4jPresent()) {
             dependencies.remove(Dependency.SLF4J_API);
@@ -95,7 +99,7 @@ public class DependencyRegistry {
         Platform.Type type = this.plugin.getBootstrap().getType();
 
         // support for LuckPerms legacy (bukkit 1.7.10)
-        if (!RelocationHandler.DEPENDENCIES.contains(dependency) && JsonElement.class.getName().startsWith("me.lucko")) {
+        if (!RelocationHandler.DEPENDENCIES.contains(dependency) && isGsonRelocated()) {
             relocations.add(Relocation.of("guava", "com{}google{}common"));
             relocations.add(Relocation.of("gson", "com{}google{}gson"));
         }
@@ -119,6 +123,11 @@ public class DependencyRegistry {
             default:
                 return true;
         }
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    public static boolean isGsonRelocated() {
+        return JsonElement.class.getName().startsWith("me.lucko");
     }
 
     private static boolean classExists(String className) {

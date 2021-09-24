@@ -26,8 +26,11 @@
 package me.lucko.luckperms.common.verbose.event;
 
 import me.lucko.luckperms.common.util.gson.JObject;
+import me.lucko.luckperms.common.verbose.VerboseCheckTarget;
 
 import net.luckperms.api.query.QueryOptions;
+
+import java.util.Locale;
 
 public class MetaCheckEvent extends VerboseEvent {
 
@@ -46,7 +49,7 @@ public class MetaCheckEvent extends VerboseEvent {
      */
     private final String result;
 
-    public MetaCheckEvent(Origin origin, String checkTarget, QueryOptions checkQueryOptions, long checkTime, Throwable checkTrace, String checkThread, String key, String result) {
+    public MetaCheckEvent(Origin origin, VerboseCheckTarget checkTarget, QueryOptions checkQueryOptions, long checkTime, Throwable checkTrace, String checkThread, String key, String result) {
         super(checkTarget, checkQueryOptions, checkTime, checkTrace, checkThread);
         this.origin = origin;
         this.key = key;
@@ -70,14 +73,14 @@ public class MetaCheckEvent extends VerboseEvent {
         object.add("type", "meta")
                 .add("key", this.key)
                 .add("result", this.result)
-                .add("origin", this.origin.name().toLowerCase());
+                .add("origin", this.origin.name().toLowerCase(Locale.ROOT));
     }
 
     @Override
     public boolean eval(String variable) {
         return variable.equals("meta") ||
-                getCheckTarget().equalsIgnoreCase(variable) ||
-                getKey().toLowerCase().startsWith(variable.toLowerCase()) ||
+                getCheckTarget().describe().equalsIgnoreCase(variable) ||
+                getKey().toLowerCase(Locale.ROOT).startsWith(variable.toLowerCase(Locale.ROOT)) ||
                 getResult().equalsIgnoreCase(variable);
     }
 

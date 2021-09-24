@@ -45,7 +45,6 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 import java.util.Locale;
 
@@ -74,9 +73,19 @@ public abstract class ServerPlayerEntityMixin implements MixinUser {
     @Shadow public abstract ServerWorld getServerWorld();
 
     @Override
+    public User getLuckPermsUser() {
+        return this.luckperms$user;
+    }
+
+    @Override
+    public QueryOptionsCache<ServerPlayerEntity> getQueryOptionsCache() {
+        return this.luckperms$queryOptions;
+    }
+
+    @Override
     public QueryOptionsCache<ServerPlayerEntity> getQueryOptionsCache(FabricContextManager contextManager) {
         if (this.luckperms$queryOptions == null) {
-            this.luckperms$queryOptions = contextManager.newQueryOptionsCache(((ServerPlayerEntity) (Object) this));
+            this.luckperms$queryOptions = contextManager.newQueryOptionsCache((ServerPlayerEntity) (Object) this);
         }
         return this.luckperms$queryOptions;
     }
@@ -101,6 +110,10 @@ public abstract class ServerPlayerEntityMixin implements MixinUser {
         if (permission == null) {
             throw new NullPointerException("permission");
         }
+        if (this.luckperms$user == null || this.luckperms$queryOptions == null) {
+            // "fake" players will have our mixin, but won't have been initialised.
+            return Tristate.UNDEFINED;
+        }
         return hasPermission(permission, this.luckperms$queryOptions.getQueryOptions());
     }
 
@@ -114,28 +127,32 @@ public abstract class ServerPlayerEntityMixin implements MixinUser {
         }
 
         final User user = this.luckperms$user;
-        if (user == null) {
-            throw new IllegalStateException("Permissions have not been initialised for this player yet.");
+        if (user == null || this.luckperms$queryOptions == null) {
+            // "fake" players will have our mixin, but won't have been initialised.
+            return Tristate.UNDEFINED;
         }
 
         PermissionCache data = user.getCachedData().getPermissionData(queryOptions);
         return data.checkPermission(permission, PermissionCheckEvent.Origin.PLATFORM_PERMISSION_CHECK).result();
     }
 
-    @Inject(
-            at = @At("HEAD"),
-            method = "setClientSettings"
-    )
+
+    @Inject(at = @At("TAIL"), method = "copyFrom")
+    private void luckperms_copyFrom(ServerPlayerEntity oldPlayer, boolean alive, CallbackInfo ci) {
+        MixinUser oldMixin = (MixinUser) oldPlayer;
+        this.luckperms$user = oldMixin.getLuckPermsUser();
+        this.luckperms$queryOptions = oldMixin.getQueryOptionsCache();
+        this.luckperms$queryOptions.invalidate();
+        this.luckperms$locale = oldMixin.getCachedLocale();
+    }
+
+    @Inject(at = @At("HEAD"), method = "setClientSettings")
     private void luckperms_setClientSettings(ClientSettingsC2SPacket information, CallbackInfo ci) {
         String language = ((ClientSettingsC2SPacketAccessor) information).getLanguage();
         this.luckperms$locale = TranslationManager.parseLocale(language);
     }
 
-    @Inject(
-            at = @At("TAIL"),
-            method = "worldChanged",
-            locals = LocalCapture.CAPTURE_FAILEXCEPTION
-    )
+    @Inject(at = @At("TAIL"), method = "worldChanged")
     private void luckperms_onChangeDimension(ServerWorld targetWorld, CallbackInfo ci) {
         PlayerChangeWorldCallback.EVENT.invoker().onChangeWorld(this.getServerWorld(), targetWorld, (ServerPlayerEntity) (Object) this);
     }

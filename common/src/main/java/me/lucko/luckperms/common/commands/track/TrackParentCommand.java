@@ -39,6 +39,7 @@ import me.lucko.luckperms.common.util.CaffeineFactory;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -55,6 +56,7 @@ public class TrackParentCommand extends ParentCommand<Track, String> {
     public TrackParentCommand() {
         super(CommandSpec.TRACK, "Track", Type.TAKES_ARGUMENT_FOR_TARGET, ImmutableList.<Command<Track>>builder()
                 .add(new TrackInfo())
+                .add(new TrackEditor())
                 .add(new TrackAppend())
                 .add(new TrackInsert())
                 .add(new TrackRemove())
@@ -67,7 +69,7 @@ public class TrackParentCommand extends ParentCommand<Track, String> {
 
     @Override
     protected String parseTarget(String target, LuckPermsPlugin plugin, Sender sender) {
-        return target.toLowerCase();
+        return target.toLowerCase(Locale.ROOT);
     }
 
     @Override

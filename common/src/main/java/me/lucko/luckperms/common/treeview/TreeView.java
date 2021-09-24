@@ -46,6 +46,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.zip.GZIPOutputStream;
@@ -139,7 +140,7 @@ public class TreeView {
 
         // work out the prefix to apply
         // since the view is relative, we need to prepend this to all permissions
-        String prefix = this.rootPosition.equals(".") ? "" : (this.rootPosition + ".");
+        String prefix = this.rootPosition.equals(".") ? "" : this.rootPosition + ".";
         JsonObject jsonTree = this.view.toJson(prefix);
 
         JObject metadata = new JObject()
@@ -160,7 +161,7 @@ public class TreeView {
             checks = new JObject();
             for (Map.Entry<Integer, String> node : this.view.getNodeEndings()) {
                 String permission = prefix + node.getValue();
-                checks.add(permission, checker.checkPermission(permission, PermissionCheckEvent.Origin.INTERNAL).result().name().toLowerCase());
+                checks.add(permission, checker.checkPermission(permission, PermissionCheckEvent.Origin.INTERNAL).result().name().toLowerCase(Locale.ROOT));
             }
         } else {
             checks = null;
@@ -180,7 +181,7 @@ public class TreeView {
 
         ByteArrayOutputStream bytesOut = new ByteArrayOutputStream();
         try (Writer writer = new OutputStreamWriter(new GZIPOutputStream(bytesOut), StandardCharsets.UTF_8)) {
-            GsonProvider.prettyPrinting().toJson(payload, writer);
+            GsonProvider.normal().toJson(payload, writer);
         } catch (IOException e) {
             e.printStackTrace();
         }

@@ -25,7 +25,6 @@
 
 package me.lucko.luckperms.sponge.commands;
 
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.ChildCommand;
 import me.lucko.luckperms.common.command.abstraction.CommandException;
 import me.lucko.luckperms.common.command.access.CommandPermission;
@@ -39,23 +38,23 @@ import me.lucko.luckperms.sponge.service.model.LPSubjectData;
 import net.luckperms.api.context.ImmutableContextSet;
 import net.luckperms.api.util.Tristate;
 
+import java.util.Locale;
+
 public class PermissionSet extends ChildCommand<LPSubjectData> {
     public PermissionSet() {
         super(CommandSpec.SPONGE_PERMISSION_SET, "set", CommandPermission.SPONGE_PERMISSION_SET, Predicates.inRange(0, 1));
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, LPSubjectData subjectData, ArgumentList args, String label) throws CommandException {
+    public void execute(LuckPermsPlugin plugin, Sender sender, LPSubjectData subjectData, ArgumentList args, String label) throws CommandException {
         String node = args.get(0);
         Tristate tristate = SpongeCommandUtils.parseTristate(1, args);
         ImmutableContextSet contextSet = args.getContextOrEmpty(2);
 
         if (subjectData.setPermission(contextSet, node, tristate).join()) {
-            SpongeCommandUtils.sendPrefixed(sender, "&aSet &b" + node + "&a to &b" + tristate.toString().toLowerCase() + "&a in context " + SpongeCommandUtils.contextToString(contextSet));
+            SpongeCommandUtils.sendPrefixed(sender, "&aSet &b" + node + "&a to &b" + tristate.toString().toLowerCase(Locale.ROOT) + "&a in context " + SpongeCommandUtils.contextToString(contextSet));
         } else {
             SpongeCommandUtils.sendPrefixed(sender, "Unable to set permission. Does the Subject already have it set?");
         }
-
-        return CommandResult.SUCCESS;
     }
 }

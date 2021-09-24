@@ -25,14 +25,12 @@
 
 package me.lucko.luckperms.bukkit.calculator;
 
-import com.google.common.collect.ImmutableList;
-
 import me.lucko.luckperms.bukkit.LPBukkitPlugin;
 import me.lucko.luckperms.bukkit.context.BukkitContextManager;
 import me.lucko.luckperms.common.cacheddata.CacheMetadata;
 import me.lucko.luckperms.common.calculator.CalculatorFactory;
 import me.lucko.luckperms.common.calculator.PermissionCalculator;
-import me.lucko.luckperms.common.calculator.processor.MapProcessor;
+import me.lucko.luckperms.common.calculator.processor.DirectProcessor;
 import me.lucko.luckperms.common.calculator.processor.PermissionProcessor;
 import me.lucko.luckperms.common.calculator.processor.RegexProcessor;
 import me.lucko.luckperms.common.calculator.processor.SpongeWildcardProcessor;
@@ -41,6 +39,9 @@ import me.lucko.luckperms.common.config.ConfigKeys;
 import me.lucko.luckperms.common.model.HolderType;
 
 import net.luckperms.api.query.QueryOptions;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class BukkitCalculatorFactory implements CalculatorFactory {
     private final LPBukkitPlugin plugin;
@@ -51,9 +52,9 @@ public class BukkitCalculatorFactory implements CalculatorFactory {
 
     @Override
     public PermissionCalculator build(QueryOptions queryOptions, CacheMetadata metadata) {
-        ImmutableList.Builder<PermissionProcessor> processors = ImmutableList.builder();
+        List<PermissionProcessor> processors = new ArrayList<>(7);
 
-        processors.add(new MapProcessor());
+        processors.add(new DirectProcessor());
 
         if (this.plugin.getConfiguration().get(ConfigKeys.APPLY_BUKKIT_CHILD_PERMISSIONS)) {
             processors.add(new ChildProcessor(this.plugin));
@@ -81,6 +82,6 @@ public class BukkitCalculatorFactory implements CalculatorFactory {
             processors.add(OpProcessor.INSTANCE);
         }
 
-        return new PermissionCalculator(this.plugin, metadata, processors.build());
+        return new PermissionCalculator(this.plugin, metadata, processors);
     }
 }

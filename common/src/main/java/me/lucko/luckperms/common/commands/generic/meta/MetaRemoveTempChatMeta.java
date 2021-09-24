@@ -26,7 +26,6 @@
 package me.lucko.luckperms.common.commands.generic.meta;
 
 import me.lucko.luckperms.common.actionlog.LoggedAction;
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.CommandException;
 import me.lucko.luckperms.common.command.abstraction.GenericChildCommand;
 import me.lucko.luckperms.common.command.access.ArgumentPermissions;
@@ -48,6 +47,7 @@ import net.luckperms.api.model.data.DataType;
 import net.luckperms.api.node.ChatMetaType;
 
 import java.util.List;
+import java.util.Locale;
 
 public class MetaRemoveTempChatMeta extends GenericChildCommand {
 
@@ -79,10 +79,10 @@ public class MetaRemoveTempChatMeta extends GenericChildCommand {
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, PermissionHolder target, ArgumentList args, String label, CommandPermission permission) throws CommandException {
+    public void execute(LuckPermsPlugin plugin, Sender sender, PermissionHolder target, ArgumentList args, String label, CommandPermission permission) throws CommandException {
         if (ArgumentPermissions.checkModifyPerms(plugin, sender, permission, target)) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         int priority = args.getPriority(0);
@@ -92,7 +92,7 @@ public class MetaRemoveTempChatMeta extends GenericChildCommand {
         if (ArgumentPermissions.checkContext(plugin, sender, permission, context) ||
                 ArgumentPermissions.checkGroup(plugin, sender, target, context)) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         // Handle bulk removal
@@ -101,11 +101,11 @@ public class MetaRemoveTempChatMeta extends GenericChildCommand {
             Message.BULK_REMOVE_TEMP_CHATMETA_SUCCESS.send(sender, target, this.type, priority, context);
 
             LoggedAction.build().source(sender).target(target)
-                    .description("meta" , "removetemp" + this.type.name().toLowerCase(), priority, "*", context)
+                    .description("meta" , "removetemp" + this.type.name().toLowerCase(Locale.ROOT), priority, "*", context)
                     .build().submit(plugin, sender);
 
             StorageAssistant.save(target, sender, plugin);
-            return CommandResult.SUCCESS;
+            return;
         }
 
         DataMutateResult result = target.unsetNode(DataType.NORMAL, this.type.builder(meta, priority).expiry(10L).withContext(context).build());
@@ -114,14 +114,12 @@ public class MetaRemoveTempChatMeta extends GenericChildCommand {
             Message.REMOVE_TEMP_CHATMETA_SUCCESS.send(sender, target, this.type, meta, priority, context);
 
             LoggedAction.build().source(sender).target(target)
-                    .description("meta" , "removetemp" + this.type.name().toLowerCase(), priority, meta, context)
+                    .description("meta" , "removetemp" + this.type.name().toLowerCase(Locale.ROOT), priority, meta, context)
                     .build().submit(plugin, sender);
 
             StorageAssistant.save(target, sender, plugin);
-            return CommandResult.SUCCESS;
         } else {
             Message.DOES_NOT_HAVE_TEMP_CHAT_META.send(sender, target, this.type, meta, priority, context);
-            return CommandResult.STATE_ERROR;
         }
     }
 

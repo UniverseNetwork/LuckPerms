@@ -25,19 +25,17 @@
 
 package me.lucko.luckperms.common.calculator;
 
-import com.google.common.collect.ImmutableList;
-
 import me.lucko.luckperms.common.cache.LoadingMap;
 import me.lucko.luckperms.common.cacheddata.CacheMetadata;
 import me.lucko.luckperms.common.calculator.processor.PermissionProcessor;
 import me.lucko.luckperms.common.calculator.result.TristateResult;
-import me.lucko.luckperms.common.model.HolderType;
 import me.lucko.luckperms.common.plugin.LuckPermsPlugin;
 import me.lucko.luckperms.common.verbose.event.PermissionCheckEvent;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-import java.util.List;
+import java.util.Collection;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -53,24 +51,15 @@ public class PermissionCalculator implements Function<String, TristateResult> {
     private final CacheMetadata metadata;
 
     /** The processors which back this calculator */
-    private final ImmutableList<PermissionProcessor> processors;
+    private final PermissionProcessor[] processors;
 
     /** Loading cache for permission checks */
     private final LoadingMap<String, TristateResult> lookupCache = LoadingMap.of(this);
 
-    /** The object name passed to the verbose handler when checks are made */
-    private final String verboseCheckTarget;
-
-    public PermissionCalculator(LuckPermsPlugin plugin, CacheMetadata metadata, ImmutableList<PermissionProcessor> processors) {
+    public PermissionCalculator(LuckPermsPlugin plugin, CacheMetadata metadata, Collection<PermissionProcessor> processors) {
         this.plugin = plugin;
         this.metadata = metadata;
-        this.processors = processors;
-
-        if (this.metadata.getHolderType() == HolderType.GROUP) {
-            this.verboseCheckTarget = "group/" + this.metadata.getObjectName();
-        } else {
-            this.verboseCheckTarget = this.metadata.getObjectName();
-        }
+        this.processors = processors.toArray(new PermissionProcessor[0]);
     }
 
     /**
@@ -87,7 +76,7 @@ public class PermissionCalculator implements Function<String, TristateResult> {
         TristateResult result = this.lookupCache.get(permission);
 
         // log this permission lookup to the verbose handler
-        this.plugin.getVerboseHandler().offerPermissionCheckEvent(origin, this.verboseCheckTarget, this.metadata.getQueryOptions(), permission, result);
+        this.plugin.getVerboseHandler().offerPermissionCheckEvent(origin, this.metadata.getVerboseCheckInfo(), this.metadata.getQueryOptions(), permission, result);
 
         // return the result
         return result;
@@ -97,7 +86,7 @@ public class PermissionCalculator implements Function<String, TristateResult> {
     public TristateResult apply(@NonNull String permission) {
         // convert the permission to lowercase, as all values in the backing map are also lowercase.
         // this allows fast case insensitive lookups
-        permission = permission.toLowerCase();
+        permission = permission.toLowerCase(Locale.ROOT);
 
         // offer the permission to the permission vault
         // we only need to do this once per permission, so it doesn't matter
@@ -122,10 +111,6 @@ public class PermissionCalculator implements Function<String, TristateResult> {
             processor.setSource(sourceMap);
             processor.refresh();
         }
-    }
-
-    public List<PermissionProcessor> getProcessors() {
-        return this.processors;
     }
 
     public void invalidateCache() {

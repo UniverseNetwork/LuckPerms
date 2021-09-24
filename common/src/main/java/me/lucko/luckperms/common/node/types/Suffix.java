@@ -38,6 +38,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -87,7 +88,7 @@ public class Suffix extends AbstractNode<SuffixNode, SuffixNode.Builder> impleme
     }
 
     public static @Nullable Builder parse(String key) {
-        if (!key.toLowerCase().startsWith(NODE_MARKER)) {
+        if (!key.toLowerCase(Locale.ROOT).startsWith(NODE_MARKER)) {
             return null;
         }
 
@@ -126,7 +127,7 @@ public class Suffix extends AbstractNode<SuffixNode, SuffixNode.Builder> impleme
 
         @Override
         public @NonNull Builder suffix(@NonNull String suffix) {
-            this.suffix = suffix;
+            this.suffix = Objects.requireNonNull(suffix, "suffix");
             return this;
         }
 
@@ -138,8 +139,8 @@ public class Suffix extends AbstractNode<SuffixNode, SuffixNode.Builder> impleme
 
         @Override
         public @NonNull Suffix build() {
-            Objects.requireNonNull(this.suffix, "suffix");
-            Objects.requireNonNull(this.priority, "priority");
+            ensureDefined(this.suffix, "suffix");
+            ensureDefined(this.priority, "priority");
             return new Suffix(this.suffix, this.priority, this.value, this.expireAt, this.context.build(), this.metadata);
         }
     }

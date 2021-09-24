@@ -26,7 +26,6 @@
 package me.lucko.luckperms.common.commands.group;
 
 import me.lucko.luckperms.common.actionlog.LoggedAction;
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.ChildCommand;
 import me.lucko.luckperms.common.command.access.ArgumentPermissions;
 import me.lucko.luckperms.common.command.access.CommandPermission;
@@ -43,36 +42,38 @@ import me.lucko.luckperms.common.util.Predicates;
 import net.luckperms.api.event.cause.CreationCause;
 import net.luckperms.api.model.data.DataType;
 
+import java.util.Locale;
+
 public class GroupClone extends ChildCommand<Group> {
     public GroupClone() {
         super(CommandSpec.GROUP_CLONE, "clone", CommandPermission.GROUP_CLONE, Predicates.not(1));
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, Group target, ArgumentList args, String label) {
+    public void execute(LuckPermsPlugin plugin, Sender sender, Group target, ArgumentList args, String label) {
         if (ArgumentPermissions.checkViewPerms(plugin, sender, getPermission().get(), target)) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
-        String newGroupName = args.get(0).toLowerCase();
+        String newGroupName = args.get(0).toLowerCase(Locale.ROOT);
         if (!DataConstraints.GROUP_NAME_TEST.test(newGroupName)) {
             Message.GROUP_INVALID_ENTRY.send(sender, newGroupName);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         Group newGroup = plugin.getStorage().createAndLoadGroup(newGroupName, CreationCause.COMMAND).join();
         if (newGroup == null) {
             Message.GROUP_LOAD_ERROR.send(sender);
-            return CommandResult.LOADING_ERROR;
+            return;
         }
 
         if (ArgumentPermissions.checkModifyPerms(plugin, sender, getPermission().get(), newGroup)) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
-        newGroup.setNodes(DataType.NORMAL, target.normalData().asList());
+        newGroup.setNodes(DataType.NORMAL, target.normalData().asList(), false);
 
         Message.CLONE_SUCCESS.send(sender, target.getFormattedDisplayName(), newGroup.getFormattedDisplayName());
 
@@ -81,6 +82,5 @@ public class GroupClone extends ChildCommand<Group> {
                 .build().submit(plugin, sender);
 
         StorageAssistant.save(newGroup, sender, plugin);
-        return CommandResult.SUCCESS;
     }
 }

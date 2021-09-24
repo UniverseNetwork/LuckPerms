@@ -31,6 +31,7 @@ import net.kyori.adventure.text.Component;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * An enumeration of the command defintion/usage messages used in the plugin.
@@ -61,10 +62,6 @@ public enum CommandSpec {
     SEARCH("/%s search <permission>",
             arg("permission", true),
             arg("page", false)
-    ),
-    CHECK("/%s check <user> <permission>",
-            arg("user", true),
-            arg("permission", true)
     ),
     NETWORK_SYNC("/%s networksync"),
     IMPORT("/%s import <file>",
@@ -114,7 +111,7 @@ public enum CommandSpec {
 
     USER_INFO,
     USER_SWITCHPRIMARYGROUP(
-            (arg("group", true))
+            arg("group", true)
     ),
     USER_PROMOTE(
             arg("track", false),
@@ -184,12 +181,7 @@ public enum CommandSpec {
             arg("context...", false)
     ),
     PERMISSION_CHECK(
-            arg("node", true),
-            arg("context...", false)
-    ),
-    PERMISSION_CHECK_INHERITS(
-            arg("node", true),
-            arg("context...", false)
+            arg("node", true)
     ),
     PERMISSION_CLEAR(
             arg("context...", false)
@@ -325,6 +317,7 @@ public enum CommandSpec {
     ),
 
     TRACK_INFO,
+    TRACK_EDITOR,
     TRACK_APPEND(
             arg("group", true)
     ),
@@ -445,7 +438,7 @@ public enum CommandSpec {
     }
 
     public String key() {
-        return name().toLowerCase().replace('_', '-');
+        return name().toLowerCase(Locale.ROOT).replace('_', '-');
     }
 
     private static PartialArgument arg(String id, String name, boolean required) {

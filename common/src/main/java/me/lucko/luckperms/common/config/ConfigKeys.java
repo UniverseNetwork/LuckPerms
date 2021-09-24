@@ -59,6 +59,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -85,7 +86,13 @@ public final class ConfigKeys {
     /**
      * The name of the server
      */
-    public static final ConfigKey<String> SERVER = lowercaseStringKey("server", "global");
+    public static final ConfigKey<String> SERVER = key(c -> {
+        String server = c.getString("server", "global").toLowerCase(Locale.ROOT);
+        if (server.equals("load-from-system-property")) {
+            server = System.getProperty("luckperms.server", "global").toLowerCase(Locale.ROOT);
+        }
+        return server;
+    });
 
     /**
      * How many minutes to wait between syncs. A value <= 0 will disable syncing.
@@ -131,6 +138,16 @@ public final class ConfigKeys {
     });
 
     /**
+     * A set of disabled contexts
+     */
+    public static final ConfigKey<Set<String>> DISABLED_CONTEXTS = notReloadable(key(c -> {
+        return c.getStringList("disabled-contexts", ImmutableList.of())
+                .stream()
+                .map(String::toLowerCase)
+                .collect(ImmutableCollectors.toSet());
+    }));
+
+    /**
      * # If the servers own UUID cache/lookup facility should be used when there is no record for a player in the LuckPerms cache.
      */
     public static final ConfigKey<Boolean> USE_SERVER_UUID_CACHE = booleanKey("use-server-uuid-cache", false);
@@ -139,6 +156,11 @@ public final class ConfigKeys {
      * If LuckPerms should allow usernames with non alphanumeric characters.
      */
     public static final ConfigKey<Boolean> ALLOW_INVALID_USERNAMES = booleanKey("allow-invalid-usernames", false);
+
+    /**
+     * If LuckPerms should not require users to confirm bulkupdate operations.
+     */
+    public static final ConfigKey<Boolean> SKIP_BULKUPDATE_CONFIRMATION = booleanKey("skip-bulkupdate-confirmation", false);
 
     /**
      * If LuckPerms should produce extra logging output when it handles logins.
@@ -170,7 +192,7 @@ public final class ConfigKeys {
      */
     public static final ConfigKey<TemporaryNodeMergeStrategy> TEMPORARY_ADD_BEHAVIOUR = key(c -> {
         String value = c.getString("temporary-add-behaviour", "deny");
-        switch (value.toLowerCase()) {
+        switch (value.toLowerCase(Locale.ROOT)) {
             case "accumulate":
                 return TemporaryNodeMergeStrategy.ADD_NEW_DURATION_TO_EXISTING;
             case "replace":
@@ -184,7 +206,7 @@ public final class ConfigKeys {
      * How primary groups should be calculated.
      */
     public static final ConfigKey<String> PRIMARY_GROUP_CALCULATION_METHOD = notReloadable(key(c -> {
-        String option = c.getString("primary-group-calculation", "stored").toLowerCase();
+        String option = c.getString("primary-group-calculation", "stored").toLowerCase(Locale.ROOT);
         if (!option.equals("stored") && !option.equals("parents-by-weight") && !option.equals("all-parents-by-weight")) {
             option = "stored";
         }
@@ -297,7 +319,7 @@ public final class ConfigKeys {
      */
     public static final ConfigKey<TraversalAlgorithm> INHERITANCE_TRAVERSAL_ALGORITHM = key(c -> {
         String value = c.getString("inheritance-traversal-algorithm", "depth-first-pre-order");
-        switch (value.toLowerCase()) {
+        switch (value.toLowerCase(Locale.ROOT)) {
             case "breadth-first":
                 return TraversalAlgorithm.BREADTH_FIRST;
             case "depth-first-post-order":
@@ -334,7 +356,7 @@ public final class ConfigKeys {
      */
     public static final ConfigKey<Map<String, Integer>> GROUP_WEIGHTS = key(c -> {
         return c.getStringMap("group-weight", ImmutableMap.of()).entrySet().stream().collect(ImmutableCollectors.toMap(
-                e -> e.getKey().toLowerCase(),
+                e -> e.getKey().toLowerCase(Locale.ROOT),
                 e -> {
                     try {
                         return Integer.parseInt(e.getValue());
@@ -357,7 +379,7 @@ public final class ConfigKeys {
         String middleSpacer = l.getString("meta-formatting.prefix.middle-spacer", " ");
         String endSpacer = l.getString("meta-formatting.prefix.end-spacer", "");
         DuplicateRemovalFunction duplicateRemovalFunction;
-        switch (l.getString("meta-formatting.prefix.duplicates", "").toLowerCase()) {
+        switch (l.getString("meta-formatting.prefix.duplicates", "").toLowerCase(Locale.ROOT)) {
             case "first-only":
                 duplicateRemovalFunction = DuplicateRemovalFunction.FIRST_ONLY;
                 break;
@@ -384,7 +406,7 @@ public final class ConfigKeys {
         String middleSpacer = l.getString("meta-formatting.suffix.middle-spacer", " ");
         String endSpacer = l.getString("meta-formatting.suffix.end-spacer", "");
         DuplicateRemovalFunction duplicateRemovalFunction;
-        switch (l.getString("meta-formatting.prefix.duplicates", "").toLowerCase()) {
+        switch (l.getString("meta-formatting.prefix.duplicates", "").toLowerCase(Locale.ROOT)) {
             case "first-only":
                 duplicateRemovalFunction = DuplicateRemovalFunction.FIRST_ONLY;
                 break;
@@ -472,7 +494,7 @@ public final class ConfigKeys {
     public static final ConfigKey<String> VAULT_SERVER = key(c -> {
         // default to true for backwards compatibility
         if (USE_VAULT_SERVER.get(c)) {
-            return c.getString("vault-server", "global").toLowerCase();
+            return c.getString("vault-server", "global").toLowerCase(Locale.ROOT);
         } else {
             return SERVER.get(c);
         }
@@ -499,8 +521,8 @@ public final class ConfigKeys {
     public static final ConfigKey<WorldNameRewriter> WORLD_REWRITES = key(c -> {
         return WorldNameRewriter.of(c.getStringMap("world-rewrite", ImmutableMap.of()).entrySet().stream()
                 .collect(ImmutableCollectors.toMap(
-                        e -> e.getKey().toLowerCase(),
-                        e -> e.getValue().toLowerCase()
+                        e -> e.getKey().toLowerCase(Locale.ROOT),
+                        e -> e.getValue().toLowerCase(Locale.ROOT)
                 )));
     });
 
@@ -516,6 +538,7 @@ public final class ConfigKeys {
         int maxPoolSize = c.getInteger("data.pool-settings.maximum-pool-size", c.getInteger("data.pool-size", 10));
         int minIdle = c.getInteger("data.pool-settings.minimum-idle", maxPoolSize);
         int maxLifetime = c.getInteger("data.pool-settings.maximum-lifetime", 1800000);
+        int keepAliveTime = c.getInteger("data.pool-settings.keepalive-time", 0);
         int connectionTimeout = c.getInteger("data.pool-settings.connection-timeout", 5000);
         Map<String, String> props = ImmutableMap.copyOf(c.getStringMap("data.pool-settings.properties", ImmutableMap.of()));
 
@@ -524,7 +547,7 @@ public final class ConfigKeys {
                 c.getString("data.database", null),
                 c.getString("data.username", null),
                 c.getString("data.password", null),
-                maxPoolSize, minIdle, maxLifetime, connectionTimeout, props
+                maxPoolSize, minIdle, maxLifetime, keepAliveTime, connectionTimeout, props
         );
     }));
 
@@ -618,6 +641,31 @@ public final class ConfigKeys {
      * If the redis connection should use SSL
      */
     public static final ConfigKey<Boolean> REDIS_SSL = notReloadable(booleanKey("redis.ssl", false));
+
+    /**
+     * If rabbitmq messaging is enabled
+     */
+    public static final ConfigKey<Boolean> RABBITMQ_ENABLED = notReloadable(booleanKey("rabbitmq.enabled", false));
+
+    /**
+     * The address of the rabbitmq server
+     */
+    public static final ConfigKey<String> RABBITMQ_ADDRESS = notReloadable(stringKey("rabbitmq.address", null));
+
+    /**
+     * The virtual host to be used by the rabbitmq server
+     */
+    public static final ConfigKey<String> RABBITMQ_VIRTUAL_HOST = notReloadable(stringKey("rabbitmq.vhost", "/"));
+
+    /**
+     * The username in use by the rabbitmq server
+     */
+    public static final ConfigKey<String> RABBITMQ_USERNAME = notReloadable(stringKey("rabbitmq.username", "guest"));
+
+    /**
+     * The password in use by the rabbitmq server, or an empty string if there is no password
+     */
+    public static final ConfigKey<String> RABBITMQ_PASSWORD = notReloadable(stringKey("rabbitmq.password", "guest"));
 
     /**
      * The URL of the bytebin instance used to upload data

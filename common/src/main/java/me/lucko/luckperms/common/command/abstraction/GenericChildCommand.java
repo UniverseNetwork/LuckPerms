@@ -25,7 +25,6 @@
 
 package me.lucko.luckperms.common.command.abstraction;
 
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.access.CommandPermission;
 import me.lucko.luckperms.common.command.spec.Argument;
 import me.lucko.luckperms.common.command.spec.CommandSpec;
@@ -42,6 +41,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -77,7 +77,7 @@ public abstract class GenericChildCommand {
         this.argumentCheck = argumentCheck;
     }
 
-    public abstract CommandResult execute(LuckPermsPlugin plugin, Sender sender, PermissionHolder target, ArgumentList args, String label, CommandPermission permission) throws CommandException;
+    public abstract void execute(LuckPermsPlugin plugin, Sender sender, PermissionHolder target, ArgumentList args, String label, CommandPermission permission) throws CommandException;
 
     public List<String> tabComplete(LuckPermsPlugin plugin, Sender sender, ArgumentList args) {
         return Collections.emptyList();
@@ -107,7 +107,7 @@ public abstract class GenericChildCommand {
         TextComponent.Builder builder = Component.text()
                 .append(Component.text('>', NamedTextColor.DARK_AQUA))
                 .append(Component.space())
-                .append(Component.text(getName().toLowerCase(), NamedTextColor.GREEN));
+                .append(Component.text(getName().toLowerCase(Locale.ROOT), NamedTextColor.GREEN));
 
         if (getArgs() != null) {
             List<Component> argUsages = getArgs().stream()

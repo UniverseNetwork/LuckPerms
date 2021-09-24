@@ -101,7 +101,12 @@ public class FabricSenderFactory extends SenderFactory<LPFabricPlugin, ServerCom
 
     @Override
     protected void performCommand(ServerCommandSource sender, String command) {
-        sender.getMinecraftServer().getCommandManager().execute(sender, command);
+        sender.getServer().getCommandManager().execute(sender, command);
+    }
+
+    @Override
+    protected boolean isConsole(ServerCommandSource sender) {
+        return sender.getEntity() == null;
     }
 
     public static Text toNativeText(Component component) {

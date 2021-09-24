@@ -102,7 +102,7 @@ public class SpongeCommandExecutor extends CommandManager implements Command.Raw
             try {
                 matchedPlayers = Selector.parse(arg).select(source).stream()
                         .filter(e -> e instanceof Player)
-                        .map(e -> ((Player) e))
+                        .map(e -> (Player) e)
                         .collect(Collectors.toList());
             } catch (IllegalArgumentException e) {
                 this.plugin.getLogger().warn("Error parsing selector '" + arg + "' for " + source + " executing " + args, e);

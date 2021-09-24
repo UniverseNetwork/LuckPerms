@@ -25,13 +25,11 @@
 
 package me.lucko.luckperms.bungee.calculator;
 
-import com.google.common.collect.ImmutableList;
-
 import me.lucko.luckperms.bungee.LPBungeePlugin;
 import me.lucko.luckperms.common.cacheddata.CacheMetadata;
 import me.lucko.luckperms.common.calculator.CalculatorFactory;
 import me.lucko.luckperms.common.calculator.PermissionCalculator;
-import me.lucko.luckperms.common.calculator.processor.MapProcessor;
+import me.lucko.luckperms.common.calculator.processor.DirectProcessor;
 import me.lucko.luckperms.common.calculator.processor.PermissionProcessor;
 import me.lucko.luckperms.common.calculator.processor.RegexProcessor;
 import me.lucko.luckperms.common.calculator.processor.SpongeWildcardProcessor;
@@ -39,6 +37,9 @@ import me.lucko.luckperms.common.calculator.processor.WildcardProcessor;
 import me.lucko.luckperms.common.config.ConfigKeys;
 
 import net.luckperms.api.query.QueryOptions;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class BungeeCalculatorFactory implements CalculatorFactory {
     private final LPBungeePlugin plugin;
@@ -49,9 +50,9 @@ public class BungeeCalculatorFactory implements CalculatorFactory {
 
     @Override
     public PermissionCalculator build(QueryOptions queryOptions, CacheMetadata metadata) {
-        ImmutableList.Builder<PermissionProcessor> processors = ImmutableList.builder();
+        List<PermissionProcessor> processors = new ArrayList<>(4);
 
-        processors.add(new MapProcessor());
+        processors.add(new DirectProcessor());
 
         if (this.plugin.getConfiguration().get(ConfigKeys.APPLYING_REGEX)) {
             processors.add(new RegexProcessor());
@@ -65,6 +66,6 @@ public class BungeeCalculatorFactory implements CalculatorFactory {
             processors.add(new SpongeWildcardProcessor());
         }
 
-        return new PermissionCalculator(this.plugin, metadata, processors.build());
+        return new PermissionCalculator(this.plugin, metadata, processors);
     }
 }

@@ -40,6 +40,7 @@ import net.luckperms.api.node.types.WeightNode;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jetbrains.annotations.ApiStatus.NonExtendable;
+import org.jetbrains.annotations.Unmodifiable;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -153,7 +154,7 @@ public interface Node {
      *
      * @return a list of full nodes
      */
-    @NonNull Collection<String> resolveShorthand();
+    @NonNull @Unmodifiable Collection<String> resolveShorthand();
 
     /**
      * Gets if this node is assigned temporarily.
@@ -200,11 +201,11 @@ public interface Node {
     /**
      * Gets the metadata corresponding to the given <code>key</code>, if present.
      *
-     * @param key the key
      * @param <T> the metadata type
+     * @param key the key
      * @return the data, if present
      */
-    <T> Optional<T> getMetadata(NodeMetadataKey<T> key);
+    <T> Optional<T> getMetadata(@NonNull NodeMetadataKey<T> key);
 
     /**
      * Gets the metadata corresponding to the given <code>key</code>, throwing an exception
@@ -215,7 +216,7 @@ public interface Node {
      * @return the data
      * @throws IllegalStateException if data isn't present
      */
-    default <T> T metadata(NodeMetadataKey<T> key) throws IllegalStateException {
+    default <T> T metadata(@NonNull NodeMetadataKey<T> key) throws IllegalStateException {
         return getMetadata(key).orElseThrow(() -> new IllegalStateException("Node '" + getKey() + "' does not have '" + key.name() + "' attached."));
     }
 

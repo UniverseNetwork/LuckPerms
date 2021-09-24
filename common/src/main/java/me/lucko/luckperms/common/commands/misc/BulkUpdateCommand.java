@@ -38,19 +38,20 @@ import me.lucko.luckperms.common.bulkupdate.comparison.Constraint;
 import me.lucko.luckperms.common.bulkupdate.comparison.StandardComparison;
 import me.lucko.luckperms.common.bulkupdate.query.Query;
 import me.lucko.luckperms.common.bulkupdate.query.QueryField;
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.CommandException;
 import me.lucko.luckperms.common.command.abstraction.SingleCommand;
 import me.lucko.luckperms.common.command.access.CommandPermission;
 import me.lucko.luckperms.common.command.spec.CommandSpec;
 import me.lucko.luckperms.common.command.utils.ArgumentException;
 import me.lucko.luckperms.common.command.utils.ArgumentList;
+import me.lucko.luckperms.common.config.ConfigKeys;
 import me.lucko.luckperms.common.locale.Message;
 import me.lucko.luckperms.common.plugin.LuckPermsPlugin;
 import me.lucko.luckperms.common.sender.Sender;
 import me.lucko.luckperms.common.util.CaffeineFactory;
 import me.lucko.luckperms.common.util.Predicates;
 
+import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -62,10 +63,10 @@ public class BulkUpdateCommand extends SingleCommand {
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, ArgumentList args, String label) throws CommandException {
+    public void execute(LuckPermsPlugin plugin, Sender sender, ArgumentList args, String label) throws CommandException {
         if (!sender.isConsole()) {
             Message.BULK_UPDATE_MUST_USE_CONSOLE.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         if (args.size() == 2 && args.get(0).equalsIgnoreCase("confirm")) {
@@ -74,24 +75,11 @@ public class BulkUpdateCommand extends SingleCommand {
 
             if (operation == null) {
                 Message.BULK_UPDATE_UNKNOWN_ID.send(sender, id);
-                return CommandResult.INVALID_ARGS;
+                return;
             }
 
-            Message.BULK_UPDATE_STARTING.send(sender);
-            plugin.getStorage().applyBulkUpdate(operation).whenCompleteAsync((v, ex) -> {
-                if (ex == null) {
-                    plugin.getSyncTaskBuffer().requestDirectly();
-                    Message.BULK_UPDATE_SUCCESS.send(sender);
-                    if (operation.isTrackingStatistics()) {
-                        BulkUpdateStatistics stats = operation.getStatistics();
-                        Message.BULK_UPDATE_STATISTICS.send(sender, stats.getAffectedNodes(), stats.getAffectedUsers(), stats.getAffectedGroups());
-                    }
-                } else {
-                    ex.printStackTrace();
-                    Message.BULK_UPDATE_FAILURE.send(sender);
-                }
-            }, plugin.getBootstrap().getScheduler().async());
-            return CommandResult.SUCCESS;
+            runOperation(operation, plugin, sender);
+            return;
         }
 
         if (args.size() < 2) {
@@ -100,16 +88,16 @@ public class BulkUpdateCommand extends SingleCommand {
 
         BulkUpdateBuilder bulkUpdateBuilder = BulkUpdateBuilder.create();
 
-        bulkUpdateBuilder.trackStatistics(!args.remove("--silent"));
+        bulkUpdateBuilder.trackStatistics(!args.remove("-s"));
 
         try {
-            bulkUpdateBuilder.dataType(DataType.valueOf(args.remove(0).toUpperCase()));
+            bulkUpdateBuilder.dataType(DataType.valueOf(args.remove(0).toUpperCase(Locale.ROOT)));
         } catch (IllegalArgumentException e) {
             Message.BULK_UPDATE_INVALID_DATA_TYPE.send(sender);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
-        String action = args.remove(0).toLowerCase();
+        String action = args.remove(0).toLowerCase(Locale.ROOT);
         switch (action) {
             case "delete":
                 bulkUpdateBuilder.action(DeleteAction.create());
@@ -136,34 +124,52 @@ public class BulkUpdateCommand extends SingleCommand {
             String[] parts = constraint.split(" ");
             if (parts.length != 3) {
                 Message.BULK_UPDATE_INVALID_CONSTRAINT.send(sender, constraint);
-                return CommandResult.INVALID_ARGS;
+                return;
             }
 
             QueryField field = QueryField.of(parts[0]);
             if (field == null) {
                 Message.BULK_UPDATE_INVALID_CONSTRAINT.send(sender, constraint);
-                return CommandResult.INVALID_ARGS;
+                return;
             }
 
             Comparison comparison = StandardComparison.parseComparison(parts[1]);
             if (comparison == null) {
                 Message.BULK_UPDATE_INVALID_COMPARISON.send(sender, parts[1]);
-                return CommandResult.INVALID_ARGS;
+                return;
             }
 
             String expr = parts[2];
             bulkUpdateBuilder.query(Query.of(field, Constraint.of(comparison, expr)));
         }
 
-        String id = String.format("%04d", ThreadLocalRandom.current().nextInt(10000));
-
         BulkUpdate bulkUpdate = bulkUpdateBuilder.build();
 
-        this.pendingOperations.put(id, bulkUpdate);
+        if (plugin.getConfiguration().get(ConfigKeys.SKIP_BULKUPDATE_CONFIRMATION)) {
+            runOperation(bulkUpdate, plugin, sender);
+        } else {
+            String id = String.format("%04d", ThreadLocalRandom.current().nextInt(10000));
+            this.pendingOperations.put(id, bulkUpdate);
 
-        Message.BULK_UPDATE_QUEUED.send(sender, bulkUpdate.buildAsSql().toReadableString().replace("{table}", bulkUpdate.getDataType().getName()));
-        Message.BULK_UPDATE_CONFIRM.send(sender, label, id);
+            Message.BULK_UPDATE_QUEUED.send(sender, bulkUpdate.buildAsSql().toReadableString().replace("{table}", bulkUpdate.getDataType().getName()));
+            Message.BULK_UPDATE_CONFIRM.send(sender, label, id);
+        }
+    }
 
-        return CommandResult.SUCCESS;
+    private static void runOperation(BulkUpdate operation, LuckPermsPlugin plugin, Sender sender) {
+        Message.BULK_UPDATE_STARTING.send(sender);
+        plugin.getStorage().applyBulkUpdate(operation).whenCompleteAsync((v, ex) -> {
+            if (ex == null) {
+                plugin.getSyncTaskBuffer().requestDirectly();
+                Message.BULK_UPDATE_SUCCESS.send(sender);
+                if (operation.isTrackingStatistics()) {
+                    BulkUpdateStatistics stats = operation.getStatistics();
+                    Message.BULK_UPDATE_STATISTICS.send(sender, stats.getAffectedNodes(), stats.getAffectedUsers(), stats.getAffectedGroups());
+                }
+            } else {
+                ex.printStackTrace();
+                Message.BULK_UPDATE_FAILURE.send(sender);
+            }
+        }, plugin.getBootstrap().getScheduler().async());
     }
 }

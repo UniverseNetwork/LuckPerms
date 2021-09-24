@@ -33,11 +33,13 @@ import com.google.gson.JsonObject;
 
 import me.lucko.luckperms.common.locale.Message;
 import me.lucko.luckperms.common.model.Group;
+import me.lucko.luckperms.common.model.HolderType;
 import me.lucko.luckperms.common.model.Track;
 import me.lucko.luckperms.common.model.User;
 import me.lucko.luckperms.common.node.utils.NodeJsonSerializer;
 import me.lucko.luckperms.common.plugin.LuckPermsPlugin;
 import me.lucko.luckperms.common.sender.Sender;
+import me.lucko.luckperms.common.util.Uuids;
 
 import net.luckperms.api.event.cause.CreationCause;
 import net.luckperms.api.model.data.DataType;
@@ -48,6 +50,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -98,7 +101,7 @@ public class Importer implements Runnable {
         if (this.merge) {
             group.mergeNodes(DataType.NORMAL, nodes);
         } else {
-            group.setNodes(DataType.NORMAL, nodes);
+            group.setNodes(DataType.NORMAL, nodes, false);
         }
         this.plugin.getStorage().saveGroup(group);
     }
@@ -117,7 +120,7 @@ public class Importer implements Runnable {
         if (this.merge) {
             user.mergeNodes(DataType.NORMAL, userData.nodes);
         } else {
-            user.setNodes(DataType.NORMAL, userData.nodes);
+            user.setNodes(DataType.NORMAL, userData.nodes, false);
         }
         this.plugin.getStorage().saveUser(user).join();
         this.plugin.getUserManager().getHouseKeeper().cleanup(user.getUniqueId());
@@ -131,20 +134,7 @@ public class Importer implements Runnable {
         }
     }
 
-    @Override
-    public void run() {
-        long startTime = System.currentTimeMillis();
-        this.notify.forEach(Message.IMPORT_START::send);
-
-        // start an update task in the background - we'll #join this later
-        CompletableFuture<Void> updateTask = CompletableFuture.runAsync(() -> this.plugin.getSyncTaskBuffer().requestDirectly());
-
-        this.notify.forEach(s -> Message.IMPORT_INFO.send(s, "Reading data..."));
-
-        Map<String, Set<Node>> groups = new HashMap<>();
-        Map<String, List<String>> tracks = new HashMap<>();
-        Map<UUID, UserData> users = new HashMap<>();
-
+    private void parseExportData(Map<String, Set<Node>> groups, Map<String, List<String>> tracks, Map<UUID, UserData> users) {
         for (Map.Entry<String, JsonElement> group : getDataSection("groups")) {
             groups.put(group.getKey(), NodeJsonSerializer.deserializeNodes(group.getValue().getAsJsonObject().get("nodes").getAsJsonArray()));
         }
@@ -170,6 +160,65 @@ public class Importer implements Runnable {
             }
 
             users.put(uuid, new UserData(username, primaryGroup, nodes));
+        }
+    }
+
+    private void parseWebEditorData(Map<String, Set<Node>> groups, Map<String, List<String>> tracks, Map<UUID, UserData> users) {
+        JsonArray holdersArray = this.data.get("permissionHolders").getAsJsonArray();
+        for (JsonElement holderElement : holdersArray) {
+            JsonObject jsonData = holderElement.getAsJsonObject();
+
+            HolderType type = HolderType.valueOf(jsonData.get("type").getAsString().toUpperCase(Locale.ROOT));
+            String id = jsonData.get("id").getAsString();
+
+            if (type == HolderType.GROUP) {
+                groups.put(id, NodeJsonSerializer.deserializeNodes(jsonData.get("nodes").getAsJsonArray()));
+            } else {
+                UUID uuid = UUID.fromString(id);
+                String username = null;
+
+                String displayName = jsonData.get("displayName").getAsString();
+                if (!Uuids.PREDICATE.test(displayName)) {
+                    username = displayName;
+                }
+
+                Set<Node> nodes = NodeJsonSerializer.deserializeNodes(jsonData.get("nodes").getAsJsonArray());
+                users.put(uuid, new UserData(username, null, nodes));
+            }
+        }
+
+        JsonArray tracksArray = this.data.get("tracks").getAsJsonArray();
+        for (JsonElement trackElement : tracksArray) {
+            JsonObject jsonData = trackElement.getAsJsonObject();
+
+            String name = jsonData.get("id").getAsString();
+            JsonArray trackGroups = jsonData.get("groups").getAsJsonArray();
+
+            List<String> trackGroupsList = new ArrayList<>();
+            trackGroups.forEach(g -> trackGroupsList.add(g.getAsString()));
+            tracks.put(name, trackGroupsList);
+        }
+    }
+
+    @Override
+    public void run() {
+        long startTime = System.currentTimeMillis();
+        this.notify.forEach(Message.IMPORT_START::send);
+
+        // start an update task in the background - we'll #join this later
+        CompletableFuture<Void> updateTask = CompletableFuture.runAsync(() -> this.plugin.getSyncTaskBuffer().requestDirectly());
+
+        this.notify.forEach(s -> Message.IMPORT_INFO.send(s, "Reading data..."));
+
+        Map<String, Set<Node>> groups = new HashMap<>();
+        Map<String, List<String>> tracks = new HashMap<>();
+        Map<UUID, UserData> users = new HashMap<>();
+
+        if (this.data.has("knownPermissions")) {
+            this.notify.forEach(s -> Message.IMPORT_INFO.send(s, "The data appears to be from a web editor upload - attempting to recover from it"));
+            parseWebEditorData(groups, tracks, users);
+        } else {
+            parseExportData(groups, tracks, users);
         }
 
         this.notify.forEach(s -> Message.IMPORT_INFO.send(s, "Waiting for initial update task to complete..."));
@@ -241,7 +290,7 @@ public class Importer implements Runnable {
     }
 
     private void sendProgress(int processedCount, int total) {
-        int percent = (processedCount * 100) / total;
+        int percent = processedCount * 100 / total;
         this.notify.forEach(s -> Message.IMPORT_PROGRESS.send(s, percent, processedCount, total));
     }
 

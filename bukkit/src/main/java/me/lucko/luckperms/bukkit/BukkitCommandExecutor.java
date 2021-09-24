@@ -73,7 +73,7 @@ public class BukkitCommandExecutor extends CommandManager implements TabExecutor
     public void register() {
         this.command.setExecutor(this);
         this.command.setTabCompleter(this);
-        this.plugin.getBootstrap().getServer().getPluginManager().registerEvents(this, this.plugin.getBootstrap());
+        this.plugin.getBootstrap().getServer().getPluginManager().registerEvents(this, this.plugin.getLoader());
     }
 
     @Override
@@ -140,7 +140,7 @@ public class BukkitCommandExecutor extends CommandManager implements TabExecutor
             try {
                 matchedPlayers = this.plugin.getBootstrap().getServer().selectEntities(sender, arg).stream()
                         .filter(e -> e instanceof Player)
-                        .map(e -> ((Player) e))
+                        .map(e -> (Player) e)
                         .collect(Collectors.toList());
             } catch (IllegalArgumentException e) {
                 this.plugin.getLogger().warn("Error parsing selector '" + arg + "' for " + sender + " executing " + args, e);

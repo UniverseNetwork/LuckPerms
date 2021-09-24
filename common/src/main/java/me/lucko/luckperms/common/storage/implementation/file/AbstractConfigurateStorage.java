@@ -432,18 +432,19 @@ public abstract class AbstractConfigurateStorage implements StorageImplementatio
                 String permission = entry.getKey().toString();
                 ConfigurationNode attributes = entry.getValue();
 
-                if (!permission.equals(keyFieldName)) {
+                if (!permission.equals(keyFieldName) && !permission.isEmpty()) {
                     return new NodeEntry(permission, attributes);
                 }
             }
         }
 
         // assume 'configNode' is the actual entry.
-        String permission = children.get(keyFieldName).getString(null);
-        if (permission == null) {
+        ConfigurationNode appended = children.get(keyFieldName);
+        if (appended == null) {
             return null;
         }
 
+        String permission = appended.getString("");
         return new NodeEntry(permission, configNode);
     }
 
@@ -452,13 +453,13 @@ public abstract class AbstractConfigurateStorage implements StorageImplementatio
 
         for (ConfigurationNode appended : data.getNode("permissions").getChildrenList()) {
             String plainValue = appended.getValue(Types::strictAsString);
-            if (plainValue != null) {
+            if (plainValue != null && !plainValue.isEmpty()) {
                 nodes.add(NodeBuilders.determineMostApplicable(plainValue).build());
                 continue;
             }
 
             NodeEntry entry = parseNode(appended, "permission");
-            if (entry == null) {
+            if (entry == null || entry.key.isEmpty()) {
                 continue;
             }
 
@@ -476,7 +477,7 @@ public abstract class AbstractConfigurateStorage implements StorageImplementatio
             }
 
             NodeEntry entry = parseNode(appended, "group");
-            if (entry == null) {
+            if (entry == null || entry.key.isEmpty()) {
                 continue;
             }
 
@@ -512,7 +513,7 @@ public abstract class AbstractConfigurateStorage implements StorageImplementatio
 
         for (ConfigurationNode appended : data.getNode("meta").getChildrenList()) {
             NodeEntry entry = parseNode(appended, "key");
-            if (entry == null) {
+            if (entry == null || entry.key.isEmpty()) {
                 continue;
             }
 
@@ -545,7 +546,7 @@ public abstract class AbstractConfigurateStorage implements StorageImplementatio
 
     private void appendNode(ConfigurationNode base, String key, ConfigurationNode attributes, String keyFieldName) {
         ConfigurationNode appended = base.appendListNode();
-        if (this.loader instanceof YamlLoader) {
+        if (this.loader instanceof YamlLoader && !key.isEmpty()) {
             // create a map node with a single entry of key --> attributes
             appended.getNode(key).setValue(attributes);
         } else {

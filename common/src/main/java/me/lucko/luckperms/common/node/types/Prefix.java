@@ -38,6 +38,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -87,7 +88,7 @@ public class Prefix extends AbstractNode<PrefixNode, PrefixNode.Builder> impleme
     }
 
     public static @Nullable Builder parse(String key) {
-        if (!key.toLowerCase().startsWith(NODE_MARKER)) {
+        if (!key.toLowerCase(Locale.ROOT).startsWith(NODE_MARKER)) {
             return null;
         }
 
@@ -125,7 +126,7 @@ public class Prefix extends AbstractNode<PrefixNode, PrefixNode.Builder> impleme
 
         @Override
         public @NonNull Builder prefix(@NonNull String prefix) {
-            this.prefix = prefix;
+            this.prefix = Objects.requireNonNull(prefix, "prefix");
             return this;
         }
 
@@ -137,8 +138,8 @@ public class Prefix extends AbstractNode<PrefixNode, PrefixNode.Builder> impleme
 
         @Override
         public @NonNull Prefix build() {
-            Objects.requireNonNull(this.prefix, "prefix");
-            Objects.requireNonNull(this.priority, "priority");
+            ensureDefined(this.prefix, "prefix");
+            ensureDefined(this.priority, "priority");
             return new Prefix(this.prefix, this.priority, this.value, this.expireAt, this.context.build(), this.metadata);
         }
     }

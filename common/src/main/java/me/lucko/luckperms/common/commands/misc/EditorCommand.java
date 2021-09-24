@@ -25,7 +25,6 @@
 
 package me.lucko.luckperms.common.commands.misc;
 
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.SingleCommand;
 import me.lucko.luckperms.common.command.access.ArgumentPermissions;
 import me.lucko.luckperms.common.command.access.CommandPermission;
@@ -33,38 +32,28 @@ import me.lucko.luckperms.common.command.spec.CommandSpec;
 import me.lucko.luckperms.common.command.utils.ArgumentList;
 import me.lucko.luckperms.common.context.contextset.ImmutableContextSetImpl;
 import me.lucko.luckperms.common.locale.Message;
-import me.lucko.luckperms.common.model.Group;
 import me.lucko.luckperms.common.model.PermissionHolder;
 import me.lucko.luckperms.common.model.Track;
-import me.lucko.luckperms.common.model.User;
 import me.lucko.luckperms.common.node.matcher.ConstraintNodeMatcher;
 import me.lucko.luckperms.common.node.matcher.StandardNodeMatchers;
 import me.lucko.luckperms.common.plugin.LuckPermsPlugin;
 import me.lucko.luckperms.common.sender.Sender;
-import me.lucko.luckperms.common.storage.misc.NodeEntry;
 import me.lucko.luckperms.common.util.Predicates;
-import me.lucko.luckperms.common.verbose.event.MetaCheckEvent;
 import me.lucko.luckperms.common.webeditor.WebEditorRequest;
 
 import net.luckperms.api.node.Node;
-import net.luckperms.api.query.QueryOptions;
 
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.Locale;
 
 public class EditorCommand extends SingleCommand {
-    public static final int MAX_USERS = 500;
-
     public EditorCommand() {
         super(CommandSpec.EDITOR, "Editor", CommandPermission.EDITOR, Predicates.notInRange(0, 2));
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, ArgumentList args, String label) {
+    public void execute(LuckPermsPlugin plugin, Sender sender, ArgumentList args, String label) {
         Type type = Type.ALL;
         String filter = null;
 
@@ -72,7 +61,7 @@ public class EditorCommand extends SingleCommand {
         String arg0 = args.getOrDefault(0, null);
         if (arg0 != null) {
             try {
-                type = Type.valueOf(arg0.toUpperCase());
+                type = Type.valueOf(arg0.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
                 // assume they meant it as a filter
                 filter = arg0;
@@ -89,75 +78,21 @@ public class EditorCommand extends SingleCommand {
         // collect holders
         List<PermissionHolder> holders = new ArrayList<>();
         List<Track> tracks = new ArrayList<>();
-        if (type.includingGroups) {
-            plugin.getGroupManager().getAll().values().stream()
-                    .sorted(Comparator
-                            .<Group>comparingInt(g -> g.getWeight().orElse(0)).reversed()
-                            .thenComparing(Group::getName, String.CASE_INSENSITIVE_ORDER)
-                    )
-                    .forEach(holders::add);
 
+        if (type.includingGroups) {
+            WebEditorRequest.includeMatchingGroups(holders, Predicates.alwaysTrue(), plugin);
             tracks.addAll(plugin.getTrackManager().getAll().values());
         }
+
         if (type.includingUsers) {
             // include all online players
-            Map<UUID, User> users = new LinkedHashMap<>(plugin.getUserManager().getAll());
-
-            if (filter != null) {
-                ConstraintNodeMatcher<Node> matcher = StandardNodeMatchers.keyStartsWith(filter);
-
-                // only include online players matching the permission
-                users.values().removeIf(user -> user.normalData().asList().stream().noneMatch(matcher));
-
-                // fill up with other matching users
-                if (type.includingOffline && users.size() < MAX_USERS) {
-                    plugin.getStorage().searchUserNodes(matcher).join().stream()
-                            .map(NodeEntry::getHolder)
-                            .distinct()
-                            .filter(uuid -> !users.containsKey(uuid))
-                            .sorted()
-                            .limit(MAX_USERS - users.size())
-                            .forEach(uuid -> {
-                                User user = plugin.getStorage().loadUser(uuid, null).join();
-                                if (user != null) {
-                                    users.put(uuid, user);
-                                }
-                                plugin.getUserManager().getHouseKeeper().cleanup(uuid);
-                            });
-                }
-            } else {
-
-                // fill up with other users
-                if (type.includingOffline && users.size() < MAX_USERS) {
-                    plugin.getStorage().getUniqueUsers().join().stream()
-                            .filter(uuid -> !users.containsKey(uuid))
-                            .sorted()
-                            .limit(MAX_USERS - users.size())
-                            .forEach(uuid -> {
-                                User user = plugin.getStorage().loadUser(uuid, null).join();
-                                if (user != null) {
-                                    users.put(uuid, user);
-                                }
-                                plugin.getUserManager().getHouseKeeper().cleanup(uuid);
-                            });
-                }
-            }
-
-            users.values().stream()
-                    .sorted(Comparator
-                            // sort firstly by the users relative weight (depends on the groups they inherit)
-                            .<User>comparingInt(u -> u.getCachedData().getMetaData(QueryOptions.nonContextual()).getWeight(MetaCheckEvent.Origin.INTERNAL)).reversed()
-                            // then, prioritise users we actually have a username for
-                            .thenComparing(u -> u.getUsername().isPresent(), ((Comparator<Boolean>) Boolean::compare).reversed())
-                            // then sort according to their username
-                            .thenComparing(User::getPlainDisplayName, String.CASE_INSENSITIVE_ORDER)
-                    )
-                    .forEach(holders::add);
+            ConstraintNodeMatcher<Node> matcher = filter != null ? StandardNodeMatchers.keyStartsWith(filter) : null;
+            WebEditorRequest.includeMatchingUsers(holders, matcher, type.includingOffline, plugin);
         }
 
         if (holders.isEmpty()) {
             Message.EDITOR_NO_MATCH.send(sender);
-            return CommandResult.STATE_ERROR;
+            return;
         }
 
         // remove holders which the sender doesn't have perms to view
@@ -167,12 +102,12 @@ public class EditorCommand extends SingleCommand {
         // they don't have perms to view any of them
         if (holders.isEmpty() && tracks.isEmpty()) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         Message.EDITOR_START.send(sender);
 
-        return WebEditorRequest.generate(holders, tracks, sender, label, plugin)
+        WebEditorRequest.generate(holders, tracks, sender, label, plugin)
                 .createSession(plugin, sender);
     }
 

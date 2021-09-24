@@ -26,7 +26,6 @@
 package me.lucko.luckperms.common.commands.log;
 
 import me.lucko.luckperms.common.actionlog.Log;
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.ChildCommand;
 import me.lucko.luckperms.common.command.access.CommandPermission;
 import me.lucko.luckperms.common.command.spec.CommandSpec;
@@ -34,7 +33,7 @@ import me.lucko.luckperms.common.command.utils.ArgumentList;
 import me.lucko.luckperms.common.context.contextset.ImmutableContextSetImpl;
 import me.lucko.luckperms.common.locale.Message;
 import me.lucko.luckperms.common.model.User;
-import me.lucko.luckperms.common.node.factory.NodeBuilders;
+import me.lucko.luckperms.common.node.types.Permission;
 import me.lucko.luckperms.common.plugin.LuckPermsPlugin;
 import me.lucko.luckperms.common.sender.Sender;
 import me.lucko.luckperms.common.util.Predicates;
@@ -75,7 +74,7 @@ public class LogNotify extends ChildCommand<Log> {
 
         if (state) {
             // add the perm
-            user.setNode(DataType.NORMAL, NodeBuilders.determineMostApplicable(IGNORE_NODE).build(), true);
+            user.setNode(DataType.NORMAL, Permission.builder().permission(IGNORE_NODE).build(), true);
         } else {
             // remove the perm
             user.removeIf(DataType.NORMAL, ImmutableContextSetImpl.EMPTY, n -> n.getKey().equalsIgnoreCase(IGNORE_NODE), false);
@@ -85,10 +84,10 @@ public class LogNotify extends ChildCommand<Log> {
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, Log log, ArgumentList args, String label) {
+    public void execute(LuckPermsPlugin plugin, Sender sender, Log log, ArgumentList args, String label) {
         if (sender.isConsole()) {
             Message.LOG_NOTIFY_CONSOLE.send(sender);
-            return CommandResult.SUCCESS;
+            return;
         }
 
         final UUID uuid = sender.getUniqueId();
@@ -97,42 +96,41 @@ public class LogNotify extends ChildCommand<Log> {
                 // toggle on
                 setIgnoring(plugin, uuid, false);
                 Message.LOG_NOTIFY_TOGGLE_ON.send(sender);
-                return CommandResult.SUCCESS;
+                return;
             }
             // toggle off
             setIgnoring(plugin, uuid, true);
             Message.LOG_NOTIFY_TOGGLE_OFF.send(sender);
-            return CommandResult.SUCCESS;
+            return;
         }
 
         if (args.get(0).equalsIgnoreCase("on")) {
             if (!isIgnoring(plugin, uuid)) {
                 // already on
                 Message.LOG_NOTIFY_ALREADY_ON.send(sender);
-                return CommandResult.STATE_ERROR;
+                return;
             }
 
             // toggle on
             setIgnoring(plugin, uuid, false);
             Message.LOG_NOTIFY_TOGGLE_ON.send(sender);
-            return CommandResult.SUCCESS;
+            return;
         }
 
         if (args.get(0).equalsIgnoreCase("off")) {
             if (isIgnoring(plugin, uuid)) {
                 // already off
                 Message.LOG_NOTIFY_ALREADY_OFF.send(sender);
-                return CommandResult.STATE_ERROR;
+                return;
             }
 
             // toggle off
             setIgnoring(plugin, uuid, true);
             Message.LOG_NOTIFY_TOGGLE_OFF.send(sender);
-            return CommandResult.SUCCESS;
+            return;
         }
 
         // not recognised
         Message.LOG_NOTIFY_UNKNOWN.send(sender);
-        return CommandResult.INVALID_ARGS;
     }
 }

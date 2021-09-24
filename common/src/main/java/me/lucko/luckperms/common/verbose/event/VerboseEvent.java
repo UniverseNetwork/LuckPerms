@@ -30,13 +30,16 @@ import com.google.gson.JsonObject;
 import me.lucko.luckperms.common.util.StackTracePrinter;
 import me.lucko.luckperms.common.util.gson.JArray;
 import me.lucko.luckperms.common.util.gson.JObject;
+import me.lucko.luckperms.common.verbose.VerboseCheckTarget;
 import me.lucko.luckperms.common.verbose.expression.BooleanExpressionCompiler.VariableEvaluator;
 
 import net.luckperms.api.context.Context;
 import net.luckperms.api.query.QueryMode;
 import net.luckperms.api.query.QueryOptions;
 
+import java.util.Locale;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Represents a verbose event.
@@ -46,7 +49,7 @@ public abstract class VerboseEvent implements VariableEvaluator {
     /**
      * The name of the entity which was checked
      */
-    private final String checkTarget;
+    private final VerboseCheckTarget checkTarget;
 
     /**
      * The query options used for the check
@@ -68,7 +71,7 @@ public abstract class VerboseEvent implements VariableEvaluator {
      */
     private final String checkThread;
 
-    protected VerboseEvent(String checkTarget, QueryOptions checkQueryOptions, long checkTime, Throwable checkTrace, String checkThread) {
+    protected VerboseEvent(VerboseCheckTarget checkTarget, QueryOptions checkQueryOptions, long checkTime, Throwable checkTrace, String checkThread) {
         this.checkTarget = checkTarget;
         this.checkQueryOptions = checkQueryOptions;
         this.checkTime = checkTime;
@@ -76,7 +79,7 @@ public abstract class VerboseEvent implements VariableEvaluator {
         this.checkThread = checkThread;
     }
 
-    public String getCheckTarget() {
+    public VerboseCheckTarget getCheckTarget() {
         return this.checkTarget;
     }
 
@@ -101,9 +104,17 @@ public abstract class VerboseEvent implements VariableEvaluator {
     public JsonObject toJson(StackTracePrinter tracePrinter) {
         return new JObject()
                 .add("who", new JObject()
-                        .add("identifier", this.checkTarget)
+                        .add("identifier", this.checkTarget.describe())
+                        .add("type", this.checkTarget.getType())
+                        .add("name", this.checkTarget.getName())
+                        .consume(obj -> {
+                            UUID uuid = this.checkTarget.getId();
+                            if (uuid != null) {
+                                obj.add("uuid", uuid.toString());
+                            }
+                        })
                 )
-                .add("queryMode", this.checkQueryOptions.mode().name().toLowerCase())
+                .add("queryMode", this.checkQueryOptions.mode().name().toLowerCase(Locale.ROOT))
                 .consume(obj -> {
                     if (this.checkQueryOptions.mode() == QueryMode.CONTEXTUAL) {
                         obj.add("context", new JArray()

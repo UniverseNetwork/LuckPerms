@@ -38,6 +38,7 @@ import net.luckperms.api.node.NodeBuilder;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 public class NodeJsonSerializer {
@@ -51,7 +52,7 @@ public class NodeJsonSerializer {
         for (Node node : nodes) {
             JsonObject attributes = new JsonObject();
 
-            attributes.addProperty("type", node.getType().name().toLowerCase());
+            attributes.addProperty("type", node.getType().name().toLowerCase(Locale.ROOT));
             attributes.addProperty("key", node.getKey());
             attributes.addProperty("value", node.getValue());
 
@@ -75,9 +76,15 @@ public class NodeJsonSerializer {
             JsonObject attributes = ent.getAsJsonObject();
 
             String key = attributes.get("key").getAsString();
-            boolean value = attributes.get("value").getAsBoolean();
 
-            NodeBuilder<?, ?> builder = NodeBuilders.determineMostApplicable(key).value(value);
+            if (key.isEmpty()) {
+                continue; // skip
+            }
+
+            NodeBuilder<?, ?> builder = NodeBuilders.determineMostApplicable(key);
+
+            boolean value = attributes.get("value").getAsBoolean();
+            builder.value(value);
 
             if (attributes.has("expiry")) {
                 builder.expiry(attributes.get("expiry").getAsLong());

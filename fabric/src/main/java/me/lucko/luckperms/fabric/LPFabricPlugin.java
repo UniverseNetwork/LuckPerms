@@ -27,6 +27,7 @@ package me.lucko.luckperms.fabric;
 
 import me.lucko.luckperms.common.api.LuckPermsApiProvider;
 import me.lucko.luckperms.common.calculator.CalculatorFactory;
+import me.lucko.luckperms.common.config.ConfigKeys;
 import me.lucko.luckperms.common.config.generic.adapter.ConfigurationAdapter;
 import me.lucko.luckperms.common.dependencies.Dependency;
 import me.lucko.luckperms.common.event.AbstractEventBus;
@@ -37,31 +38,29 @@ import me.lucko.luckperms.common.model.manager.group.StandardGroupManager;
 import me.lucko.luckperms.common.model.manager.track.StandardTrackManager;
 import me.lucko.luckperms.common.model.manager.user.StandardUserManager;
 import me.lucko.luckperms.common.plugin.AbstractLuckPermsPlugin;
-import me.lucko.luckperms.common.sender.DummySender;
+import me.lucko.luckperms.common.sender.DummyConsoleSender;
 import me.lucko.luckperms.common.sender.Sender;
-import me.lucko.luckperms.common.tasks.CacheHousekeepingTask;
-import me.lucko.luckperms.common.tasks.ExpireTemporaryTask;
-import me.lucko.luckperms.common.util.MoreFiles;
 import me.lucko.luckperms.fabric.context.FabricContextManager;
 import me.lucko.luckperms.fabric.context.FabricPlayerCalculator;
+import me.lucko.luckperms.fabric.listeners.FabricAutoOpListener;
+import me.lucko.luckperms.fabric.listeners.FabricCommandListUpdater;
 import me.lucko.luckperms.fabric.listeners.FabricConnectionListener;
+import me.lucko.luckperms.fabric.listeners.FabricOtherListeners;
 import me.lucko.luckperms.fabric.listeners.PermissionCheckListener;
 import me.lucko.luckperms.fabric.messaging.FabricMessagingFactory;
 
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.loader.api.ModContainer;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainComponentSerializer;
 import net.luckperms.api.LuckPerms;
 import net.luckperms.api.query.QueryOptions;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.OperatorList;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 public class LPFabricPlugin extends AbstractLuckPermsPlugin {
@@ -94,6 +93,8 @@ public class LPFabricPlugin extends AbstractLuckPermsPlugin {
         // Command registration also need to occur early, and will persist across game states as well.
         this.commandManager = new FabricCommandExecutor(this);
         this.commandManager.register();
+
+        new FabricOtherListeners(this).registerListeners();
     }
 
     @Override
@@ -112,20 +113,7 @@ public class LPFabricPlugin extends AbstractLuckPermsPlugin {
 
     @Override
     protected ConfigurationAdapter provideConfigurationAdapter() {
-        Path configPath = this.getBootstrap().getConfigDirectory().resolve("luckperms.conf");
-
-        if (!Files.exists(configPath)) {
-            try {
-                MoreFiles.createDirectoriesIfNotExists(this.bootstrap.getConfigDirectory());
-                try (InputStream is = this.getBootstrap().getResourceStream("luckperms.conf")) {
-                    Files.copy(is, configPath);
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        return new FabricConfigAdapter(this, configPath);
+        return new FabricConfigAdapter(this, resolveConfig("luckperms.conf"));
     }
 
     @Override
@@ -159,7 +147,7 @@ public class LPFabricPlugin extends AbstractLuckPermsPlugin {
     protected void setupContextManager() {
         this.contextManager = new FabricContextManager(this);
 
-        FabricPlayerCalculator playerCalculator = new FabricPlayerCalculator(this);
+        FabricPlayerCalculator playerCalculator = new FabricPlayerCalculator(this, getConfiguration().get(ConfigKeys.DISABLED_CONTEXTS));
         playerCalculator.registerListeners();
         this.contextManager.registerCalculator(playerCalculator);
     }
@@ -178,13 +166,29 @@ public class LPFabricPlugin extends AbstractLuckPermsPlugin {
     }
 
     @Override
-    protected void registerHousekeepingTasks() {
-        this.bootstrap.getScheduler().asyncRepeating(new ExpireTemporaryTask(this), 3, TimeUnit.SECONDS);
-        this.bootstrap.getScheduler().asyncRepeating(new CacheHousekeepingTask(this), 2, TimeUnit.MINUTES);
-    }
-
-    @Override
     protected void performFinalSetup() {
+        // remove all operators on startup if they're disabled
+        if (!getConfiguration().get(ConfigKeys.OPS_ENABLED)) {
+            ServerLifecycleEvents.SERVER_STARTED.register(server -> {
+                OperatorList operatorList = server.getPlayerManager().getOpList();
+                operatorList.values().clear();
+                try {
+                    operatorList.save();
+                } catch (IOException exception) {
+                    exception.printStackTrace();
+                }
+            });
+        }
+
+        // register autoop listener
+        if (getConfiguration().get(ConfigKeys.AUTO_OP)) {
+            getApiProvider().getEventBus().subscribe(new FabricAutoOpListener(this));
+        }
+
+        // register fabric command list updater
+        if (getConfiguration().get(ConfigKeys.UPDATE_CLIENT_COMMAND_LIST)) {
+            getApiProvider().getEventBus().subscribe(new FabricCommandListUpdater(this));
+        }
     }
 
     public FabricSenderFactory getSenderFactory() {
@@ -238,7 +242,7 @@ public class LPFabricPlugin extends AbstractLuckPermsPlugin {
     public Sender getConsoleSender() {
         return this.bootstrap.getServer()
                 .map(s -> this.senderFactory.wrap(s.getCommandSource()))
-                .orElseGet(() -> new DummySender(this, Sender.CONSOLE_UUID, Sender.CONSOLE_NAME) {
+                .orElseGet(() -> new DummyConsoleSender(this) {
                     @Override
                     public void sendMessage(Component message) {
                         LPFabricPlugin.this.bootstrap.getPluginLogger().info(PlainComponentSerializer.plain().serialize(TranslationManager.render(message)));

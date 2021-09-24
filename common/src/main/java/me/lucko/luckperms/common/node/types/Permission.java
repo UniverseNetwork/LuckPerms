@@ -50,7 +50,7 @@ public class Permission extends AbstractNode<PermissionNode, PermissionNode.Buil
 
     public Permission(String permission, boolean value, long expireAt, ImmutableContextSet contexts, Map<NodeMetadataKey<?>, Object> metadata) {
         super(permission, value, expireAt, contexts, metadata);
-        this.wildcardLevel = permission.endsWith(WildcardProcessor.WILDCARD_SUFFIX) ? permission.chars().filter(num -> num == NODE_SEPARATOR_CODE).sum() : -1;
+        this.wildcardLevel = WildcardProcessor.isWildcardPermission(permission) ? permission.chars().filter(num -> num == NODE_SEPARATOR).sum() : -1;
     }
 
     @Override
@@ -87,13 +87,17 @@ public class Permission extends AbstractNode<PermissionNode, PermissionNode.Buil
 
         @Override
         public @NonNull Builder permission(@NonNull String permission) {
-            this.permission = Objects.requireNonNull(permission, "permission");
+            Objects.requireNonNull(permission, "permission");
+            if (permission.isEmpty()) {
+                throw new IllegalArgumentException("permission string is empty");
+            }
+            this.permission = permission;
             return this;
         }
 
         @Override
         public @NonNull Permission build() {
-            Objects.requireNonNull(this.permission, "permission");
+            ensureDefined(this.permission, "permission");
 
             NodeBuilder<?, ?> testBuilder = NodeBuilders.determineMostApplicable(this.permission);
             if (!(testBuilder instanceof Builder)) {

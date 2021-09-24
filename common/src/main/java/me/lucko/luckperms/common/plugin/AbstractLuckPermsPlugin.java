@@ -52,6 +52,8 @@ import me.lucko.luckperms.common.storage.StorageFactory;
 import me.lucko.luckperms.common.storage.StorageType;
 import me.lucko.luckperms.common.storage.implementation.file.watcher.FileWatcher;
 import me.lucko.luckperms.common.storage.misc.DataConstraints;
+import me.lucko.luckperms.common.tasks.CacheHousekeepingTask;
+import me.lucko.luckperms.common.tasks.ExpireTemporaryTask;
 import me.lucko.luckperms.common.tasks.SyncTask;
 import me.lucko.luckperms.common.treeview.PermissionRegistry;
 import me.lucko.luckperms.common.verbose.VerboseHandler;
@@ -60,11 +62,16 @@ import net.luckperms.api.LuckPerms;
 
 import okhttp3.OkHttpClient;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Month;
 import java.util.EnumSet;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -191,9 +198,9 @@ public abstract class AbstractLuckPermsPlugin implements LuckPermsPlugin {
         this.extensionManager.loadExtensions(getBootstrap().getConfigDirectory().resolve("extensions"));
 
         // schedule update tasks
-        int mins = getConfiguration().get(ConfigKeys.SYNC_TIME);
-        if (mins > 0) {
-            getBootstrap().getScheduler().asyncRepeating(() -> this.syncTaskBuffer.request(), mins, TimeUnit.MINUTES);
+        int syncMins = getConfiguration().get(ConfigKeys.SYNC_TIME);
+        if (syncMins > 0) {
+            getBootstrap().getScheduler().asyncRepeating(() -> this.syncTaskBuffer.request(), syncMins, TimeUnit.MINUTES);
         }
 
         // run an update instantly.
@@ -251,8 +258,13 @@ public abstract class AbstractLuckPermsPlugin implements LuckPermsPlugin {
         // shutdown async executor pool
         getBootstrap().getScheduler().shutdownExecutor();
 
+        // close classpath appender
+        getBootstrap().getClassPathAppender().close();
+
         getLogger().info("Goodbye!");
     }
+
+    // hooks called during load
 
     protected Set<Dependency> getGlobalDependencies() {
         return EnumSet.of(
@@ -263,6 +275,13 @@ public abstract class AbstractLuckPermsPlugin implements LuckPermsPlugin {
                 Dependency.BYTEBUDDY,
                 Dependency.EVENT
         );
+    }
+
+    // hooks called during enable
+
+    protected void registerHousekeepingTasks() {
+        getBootstrap().getScheduler().asyncRepeating(new ExpireTemporaryTask(this), 3, TimeUnit.SECONDS);
+        getBootstrap().getScheduler().asyncRepeating(new CacheHousekeepingTask(this), 2, TimeUnit.MINUTES);
     }
 
     protected abstract void setupSenderFactory();
@@ -276,10 +295,32 @@ public abstract class AbstractLuckPermsPlugin implements LuckPermsPlugin {
     protected abstract void setupPlatformHooks();
     protected abstract AbstractEventBus<?> provideEventBus(LuckPermsApiProvider apiProvider);
     protected abstract void registerApiOnPlatform(LuckPerms api);
-    protected abstract void registerHousekeepingTasks();
     protected abstract void performFinalSetup();
 
+    // hooks called during disable
+
     protected void removePlatformHooks() {}
+
+    protected Path resolveConfig(String fileName) {
+        Path configFile = getBootstrap().getConfigDirectory().resolve(fileName);
+
+        // if the config doesn't exist, create it based on the template in the resources dir
+        if (!Files.exists(configFile)) {
+            try {
+                Files.createDirectories(configFile.getParent());
+            } catch (IOException e) {
+                // ignore
+            }
+
+            try (InputStream is = getBootstrap().getResourceStream(fileName)) {
+                Files.copy(is, configFile);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        return configFile;
+    }
 
     @Override
     public PluginLogger getLogger() {
@@ -296,7 +337,7 @@ public abstract class AbstractLuckPermsPlugin implements LuckPermsPlugin {
     @Override
     public Optional<UUID> lookupUniqueId(String username) {
         // get a result from the DB cache
-        UUID uniqueId = getStorage().getPlayerUniqueId(username.toLowerCase()).join();
+        UUID uniqueId = getStorage().getPlayerUniqueId(username.toLowerCase(Locale.ROOT)).join();
 
         // fire the event
         uniqueId = getEventDispatcher().dispatchUniqueIdLookup(username, uniqueId);

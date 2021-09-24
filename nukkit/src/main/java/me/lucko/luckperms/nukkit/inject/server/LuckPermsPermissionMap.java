@@ -41,6 +41,7 @@ import cn.nukkit.plugin.PluginManager;
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -133,7 +134,7 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
 
     @Override
     public boolean remove(Object key, Object value) {
-        return key != null && value != null && super.remove(key, uninject(((Permission) value)));
+        return key != null && value != null && super.remove(key, uninject((Permission) value));
     }
 
     // check for null
@@ -180,7 +181,7 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
                 continue;
             }
 
-            String key = e.getKey().toLowerCase();
+            String key = e.getKey().toLowerCase(Locale.ROOT);
 
             if (accumulator.containsKey(key)) {
                 continue; // Prevent infinite loops
@@ -206,11 +207,11 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
         try {
             //noinspection unchecked
             Map<String, Boolean> children = (Map<String, Boolean>) PERMISSION_CHILDREN_FIELD.get(permission);
-            while (children instanceof PermissionNotifyingChildrenMap) {
-                children = ((PermissionNotifyingChildrenMap) children).delegate;
+            while (children instanceof NotifyingChildrenMap) {
+                children = ((NotifyingChildrenMap) children).delegate;
             }
 
-            PermissionNotifyingChildrenMap notifyingChildren = new PermissionNotifyingChildrenMap(children);
+            NotifyingChildrenMap notifyingChildren = new NotifyingChildrenMap(children);
             PERMISSION_CHILDREN_FIELD.set(permission, notifyingChildren);
         } catch (Exception e) {
             e.printStackTrace();
@@ -226,8 +227,8 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
         try {
             //noinspection unchecked
             Map<String, Boolean> children = (Map<String, Boolean>) PERMISSION_CHILDREN_FIELD.get(permission);
-            while (children instanceof PermissionNotifyingChildrenMap) {
-                children = ((PermissionNotifyingChildrenMap) children).delegate;
+            while (children instanceof NotifyingChildrenMap) {
+                children = ((NotifyingChildrenMap) children).delegate;
             }
             PERMISSION_CHILDREN_FIELD.set(permission, children);
         } catch (Exception e) {
@@ -236,11 +237,15 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
         return permission;
     }
 
-    private final class PermissionNotifyingChildrenMap extends ForwardingMap<String, Boolean> {
+    private final class NotifyingChildrenMap extends ForwardingMap<String, Boolean> {
         private final Map<String, Boolean> delegate;
 
-        PermissionNotifyingChildrenMap(Map<String, Boolean> delegate) {
+        NotifyingChildrenMap(Map<String, Boolean> delegate) {
             this.delegate = delegate;
+
+            for (String key : this.delegate.keySet()) {
+                LuckPermsPermissionMap.this.plugin.getPermissionRegistry().insert(key);
+            }
         }
 
         @Override
@@ -251,6 +256,7 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
         @Override
         public Boolean put(@NonNull String key, @NonNull Boolean value) {
             Boolean ret = super.put(key, value);
+            LuckPermsPermissionMap.this.plugin.getPermissionRegistry().insert(key);
             LuckPermsPermissionMap.this.update();
             return ret;
         }
@@ -258,6 +264,9 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
         @Override
         public void putAll(@NonNull Map<? extends String, ? extends Boolean> map) {
             super.putAll(map);
+            for (String key : map.keySet()) {
+                LuckPermsPermissionMap.this.plugin.getPermissionRegistry().insert(key);
+            }
             LuckPermsPermissionMap.this.update();
         }
 

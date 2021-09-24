@@ -43,7 +43,7 @@ public class BungeeCommandExecutor extends Command implements TabExecutor {
     private static final String NAME = "luckpermsbungee";
 
     /** The command aliases */
-    private static final String[] ALIASES = {"lpb", "bperm", "bperms", "bpermission", "bpermissions"};
+    private static final String[] ALIASES = {"lpb"};
 
     /** The main command name + aliases, prefixed with '/' */
     private static final String[] SLASH_ALIASES = Stream.concat(
@@ -73,7 +73,7 @@ public class BungeeCommandExecutor extends Command implements TabExecutor {
 
     public void register() {
         ProxyServer proxy = this.plugin.getBootstrap().getProxy();
-        proxy.getPluginManager().registerCommand(this.plugin.getBootstrap(), this);
+        proxy.getPluginManager().registerCommand(this.plugin.getLoader(), this);
 
         // don't allow players to execute the slash aliases - these are just for the console.
         proxy.getDisabledCommands().addAll(Arrays.asList(SLASH_ALIASES));

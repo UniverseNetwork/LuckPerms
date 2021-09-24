@@ -26,7 +26,6 @@
 package me.lucko.luckperms.common.commands.user;
 
 import me.lucko.luckperms.common.actionlog.LoggedAction;
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.ChildCommand;
 import me.lucko.luckperms.common.command.abstraction.CommandException;
 import me.lucko.luckperms.common.command.access.ArgumentPermissions;
@@ -48,6 +47,7 @@ import net.luckperms.api.context.MutableContextSet;
 import net.luckperms.api.track.PromotionResult;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
 
@@ -57,10 +57,10 @@ public class UserPromote extends ChildCommand<User> {
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, User target, ArgumentList args, String label) throws CommandException {
+    public void execute(LuckPermsPlugin plugin, Sender sender, User target, ArgumentList args, String label) throws CommandException {
         if (ArgumentPermissions.checkModifyPerms(plugin, sender, getPermission().get(), target)) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         boolean addToFirst = !args.remove("--dont-add-to-first");
@@ -74,24 +74,24 @@ public class UserPromote extends ChildCommand<User> {
                 args.add("default");
             } else {
                 Message.USER_TRACK_ERROR_AMBIGUOUS_TRACK_SELECTION.send(sender);
-                return CommandResult.INVALID_ARGS;
+                return;
             }
         }
 
-        final String trackName = args.get(0).toLowerCase();
+        final String trackName = args.get(0).toLowerCase(Locale.ROOT);
         if (!DataConstraints.TRACK_NAME_TEST.test(trackName)) {
             Message.TRACK_INVALID_ENTRY.send(sender, trackName);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         Track track = StorageAssistant.loadTrack(trackName, sender, plugin);
         if (track == null) {
-            return CommandResult.LOADING_ERROR;
+            return;
         }
 
         if (track.getSize() <= 1) {
             Message.TRACK_EMPTY.send(sender, track.getName());
-            return CommandResult.STATE_ERROR;
+            return;
         }
 
         boolean dontShowTrackProgress = args.remove("-s");
@@ -99,7 +99,7 @@ public class UserPromote extends ChildCommand<User> {
 
         if (ArgumentPermissions.checkContext(plugin, sender, getPermission().get(), context)) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         Predicate<String> nextGroupPermissionChecker = s ->
@@ -110,21 +110,21 @@ public class UserPromote extends ChildCommand<User> {
         switch (result.getStatus()) {
             case MALFORMED_TRACK:
                 Message.USER_PROMOTE_ERROR_MALFORMED.send(sender, result.getGroupTo().get());
-                return CommandResult.LOADING_ERROR;
+                return;
             case UNDEFINED_FAILURE:
                 Message.COMMAND_NO_PERMISSION.send(sender);
-                return CommandResult.NO_PERMISSION;
+                return;
             case AMBIGUOUS_CALL:
                 Message.TRACK_AMBIGUOUS_CALL.send(sender, target);
-                return CommandResult.FAILURE;
+                return;
             case END_OF_TRACK:
                 Message.USER_PROMOTE_ERROR_ENDOFTRACK.send(sender, track.getName(), target);
-                return CommandResult.STATE_ERROR;
+                return;
 
             case ADDED_TO_FIRST_GROUP: {
                 if (!addToFirst && !result.getGroupTo().isPresent()) {
                     Message.USER_PROMOTE_NOT_ON_TRACK.send(sender, target, track.getName());
-                    return CommandResult.STATE_ERROR;
+                    return;
                 }
 
                 Message.USER_TRACK_ADDED_TO_FIRST.send(sender, target, track.getName(), result.getGroupTo().get(), context);
@@ -134,7 +134,7 @@ public class UserPromote extends ChildCommand<User> {
                         .build().submit(plugin, sender);
 
                 StorageAssistant.save(target, sender, plugin);
-                return CommandResult.SUCCESS;
+                return;
             }
 
             case SUCCESS: {
@@ -151,7 +151,7 @@ public class UserPromote extends ChildCommand<User> {
                         .build().submit(plugin, sender);
 
                 StorageAssistant.save(target, sender, plugin);
-                return CommandResult.SUCCESS;
+                return;
             }
 
             default:

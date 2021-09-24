@@ -39,8 +39,6 @@ import me.lucko.luckperms.common.model.manager.user.StandardUserManager;
 import me.lucko.luckperms.common.plugin.AbstractLuckPermsPlugin;
 import me.lucko.luckperms.common.plugin.util.AbstractConnectionListener;
 import me.lucko.luckperms.common.sender.Sender;
-import me.lucko.luckperms.common.tasks.CacheHousekeepingTask;
-import me.lucko.luckperms.common.tasks.ExpireTemporaryTask;
 import me.lucko.luckperms.nukkit.calculator.NukkitCalculatorFactory;
 import me.lucko.luckperms.nukkit.context.NukkitContextManager;
 import me.lucko.luckperms.nukkit.context.NukkitPlayerCalculator;
@@ -64,14 +62,12 @@ import net.luckperms.api.query.QueryOptions;
 import cn.nukkit.Player;
 import cn.nukkit.command.PluginCommand;
 import cn.nukkit.permission.Permission;
+import cn.nukkit.plugin.PluginBase;
 import cn.nukkit.plugin.PluginManager;
 import cn.nukkit.plugin.service.ServicePriority;
 import cn.nukkit.utils.Config;
 
-import java.io.File;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 /**
@@ -100,6 +96,10 @@ public class LPNukkitPlugin extends AbstractLuckPermsPlugin {
         return this.bootstrap;
     }
 
+    public PluginBase getLoader() {
+        return this.bootstrap.getLoader();
+    }
+
     @Override
     protected void setupSenderFactory() {
         this.senderFactory = new NukkitSenderFactory(this);
@@ -107,14 +107,14 @@ public class LPNukkitPlugin extends AbstractLuckPermsPlugin {
 
     @Override
     protected ConfigurationAdapter provideConfigurationAdapter() {
-        return new NukkitConfigAdapter(this, resolveConfig());
+        return new NukkitConfigAdapter(this, resolveConfig("config.yml").toFile());
     }
 
     @Override
     protected void registerPlatformListeners() {
         this.connectionListener = new NukkitConnectionListener(this);
-        this.bootstrap.getServer().getPluginManager().registerEvents(this.connectionListener, this.bootstrap);
-        this.bootstrap.getServer().getPluginManager().registerEvents(new NukkitPlatformListener(this), this.bootstrap);
+        this.bootstrap.getServer().getPluginManager().registerEvents(this.connectionListener, this.bootstrap.getLoader());
+        this.bootstrap.getServer().getPluginManager().registerEvents(new NukkitPlatformListener(this), this.bootstrap.getLoader());
     }
 
     @Override
@@ -145,8 +145,8 @@ public class LPNukkitPlugin extends AbstractLuckPermsPlugin {
     protected void setupContextManager() {
         this.contextManager = new NukkitContextManager(this);
 
-        NukkitPlayerCalculator playerCalculator = new NukkitPlayerCalculator(this);
-        this.bootstrap.getServer().getPluginManager().registerEvents(playerCalculator, this.bootstrap);
+        NukkitPlayerCalculator playerCalculator = new NukkitPlayerCalculator(this, getConfiguration().get(ConfigKeys.DISABLED_CONTEXTS));
+        this.bootstrap.getServer().getPluginManager().registerEvents(playerCalculator, this.bootstrap.getLoader());
         this.contextManager.registerCalculator(playerCalculator);
     }
 
@@ -165,7 +165,7 @@ public class LPNukkitPlugin extends AbstractLuckPermsPlugin {
 
             // schedule another injection after all plugins have loaded
             // the entire pluginmanager instance is replaced by some plugins :(
-            this.bootstrap.getServer().getScheduler().scheduleDelayedTask(this.bootstrap, injector, 1, true);
+            this.bootstrap.getServer().getScheduler().scheduleDelayedTask(this.bootstrap.getLoader(), injector, 1, true);
         }
     }
 
@@ -176,27 +176,19 @@ public class LPNukkitPlugin extends AbstractLuckPermsPlugin {
 
     @Override
     protected void registerApiOnPlatform(LuckPerms api) {
-        this.bootstrap.getServer().getServiceManager().register(LuckPerms.class, api, this.bootstrap, ServicePriority.NORMAL);
-    }
-
-    @Override
-    protected void registerHousekeepingTasks() {
-        this.bootstrap.getScheduler().asyncRepeating(new ExpireTemporaryTask(this), 3, TimeUnit.SECONDS);
-        this.bootstrap.getScheduler().asyncRepeating(new CacheHousekeepingTask(this), 2, TimeUnit.MINUTES);
+        this.bootstrap.getServer().getServiceManager().register(LuckPerms.class, api, this.bootstrap.getLoader(), ServicePriority.NORMAL);
     }
 
     @Override
     protected void performFinalSetup() {
         // register permissions
-        try {
-            PluginManager pm = this.bootstrap.getServer().getPluginManager();
-            PermissionDefault permDefault = getConfiguration().get(ConfigKeys.COMMANDS_ALLOW_OP) ? PermissionDefault.OP : PermissionDefault.FALSE;
+        PluginManager pluginManager = this.bootstrap.getServer().getPluginManager();
+        PermissionDefault permDefault = getConfiguration().get(ConfigKeys.COMMANDS_ALLOW_OP) ? PermissionDefault.OP : PermissionDefault.FALSE;
 
-            for (CommandPermission p : CommandPermission.values()) {
-                pm.addPermission(new Permission(p.getPermission(), null, permDefault.toString()));
-            }
-        } catch (Exception e) {
-            // this throws an exception if the plugin is /reloaded, grr
+        for (CommandPermission permission : CommandPermission.values()) {
+            Permission bukkitPermission = new Permission(permission.getPermission(), null, permDefault.toString());
+            pluginManager.removePermission(bukkitPermission);
+            pluginManager.addPermission(bukkitPermission);
         }
 
         // remove all operators on startup if they're disabled
@@ -260,33 +252,6 @@ public class LPNukkitPlugin extends AbstractLuckPermsPlugin {
         InjectorPermissionMap.uninject();
         InjectorDefaultsMap.uninject();
         new PermissibleMonitoringInjector(this, PermissibleMonitoringInjector.Mode.UNINJECT).run();
-    }
-
-    public void refreshAutoOp(Player player) {
-        if (!getConfiguration().get(ConfigKeys.AUTO_OP)) {
-            return;
-        }
-
-        User user = getUserManager().getIfLoaded(player.getUniqueId());
-        boolean value;
-
-        if (user != null) {
-            Map<String, Boolean> permData = user.getCachedData().getPermissionData(this.contextManager.getQueryOptions(player)).getPermissionMap();
-            value = permData.getOrDefault("luckperms.autoop", false);
-        } else {
-            value = false;
-        }
-
-        player.setOp(value);
-    }
-
-    private File resolveConfig() {
-        File configFile = new File(this.bootstrap.getDataFolder(), "config.yml");
-        if (!configFile.exists()) {
-            this.bootstrap.getDataFolder().mkdirs();
-            this.bootstrap.saveResource("config.yml", false);
-        }
-        return configFile;
     }
 
     @Override

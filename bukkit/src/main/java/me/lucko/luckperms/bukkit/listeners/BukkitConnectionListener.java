@@ -28,6 +28,7 @@ package me.lucko.luckperms.bukkit.listeners;
 import me.lucko.luckperms.bukkit.LPBukkitPlugin;
 import me.lucko.luckperms.bukkit.inject.permissible.LuckPermsPermissible;
 import me.lucko.luckperms.bukkit.inject.permissible.PermissibleInjector;
+import me.lucko.luckperms.bukkit.util.PlayerLocaleUtil;
 import me.lucko.luckperms.common.config.ConfigKeys;
 import me.lucko.luckperms.common.locale.Message;
 import me.lucko.luckperms.common.locale.TranslationManager;
@@ -50,8 +51,12 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 public class BukkitConnectionListener extends AbstractConnectionListener implements Listener {
+    private static final Predicate<? super String> IS_CRAFTBUKKIT_PREDICATE = Pattern.compile("^(?:git|\\d+)-Bukkit-[0-9a-f]{7}(?: .*)?$").asPredicate();
+
     private final LPBukkitPlugin plugin;
 
     private final boolean detectedCraftBukkitOfflineMode;
@@ -67,7 +72,7 @@ public class BukkitConnectionListener extends AbstractConnectionListener impleme
         String version = plugin.getBootstrap().getServer().getVersion();
         boolean onlineMode = plugin.getBootstrap().getServer().getOnlineMode();
 
-        if (!onlineMode && version.startsWith("git-Bukkit-")) {
+        if (!onlineMode && IS_CRAFTBUKKIT_PREDICATE.test(version)) {
             printCraftBukkitOfflineModeError();
             this.detectedCraftBukkitOfflineMode = true;
         } else {
@@ -175,7 +180,7 @@ public class BukkitConnectionListener extends AbstractConnectionListener impleme
                 if (this.detectedCraftBukkitOfflineMode) {
                     printCraftBukkitOfflineModeError();
 
-                    Component reason = TranslationManager.render(Message.LOADING_STATE_ERROR_CB_OFFLINE_MODE.build(), player.getLocale());
+                    Component reason = TranslationManager.render(Message.LOADING_STATE_ERROR_CB_OFFLINE_MODE.build(), PlayerLocaleUtil.getLocale(player));
                     e.disallow(PlayerLoginEvent.Result.KICK_OTHER, LegacyComponentSerializer.legacySection().serialize(reason));
                     return;
                 }
@@ -186,7 +191,7 @@ public class BukkitConnectionListener extends AbstractConnectionListener impleme
                         " - denying login.");
             }
 
-            Component reason = TranslationManager.render(Message.LOADING_STATE_ERROR.build(), player.getLocale());
+            Component reason = TranslationManager.render(Message.LOADING_STATE_ERROR.build(), PlayerLocaleUtil.getLocale(player));
             e.disallow(PlayerLoginEvent.Result.KICK_OTHER, LegacyComponentSerializer.legacySection().serialize(reason));
             return;
         }
@@ -198,13 +203,13 @@ public class BukkitConnectionListener extends AbstractConnectionListener impleme
             LuckPermsPermissible lpPermissible = new LuckPermsPermissible(player, user, this.plugin);
 
             // Inject into the player
-            PermissibleInjector.inject(player, lpPermissible);
+            PermissibleInjector.inject(player, lpPermissible, this.plugin.getLogger());
 
         } catch (Throwable t) {
             this.plugin.getLogger().warn("Exception thrown when setting up permissions for " +
                     player.getUniqueId() + " - " + player.getName() + " - denying login.", t);
 
-            Component reason = TranslationManager.render(Message.LOADING_SETUP_ERROR.build(), player.getLocale());
+            Component reason = TranslationManager.render(Message.LOADING_SETUP_ERROR.build(), PlayerLocaleUtil.getLocale(player));
             e.disallow(PlayerLoginEvent.Result.KICK_OTHER, LegacyComponentSerializer.legacySection().serialize(reason));
             return;
         }
@@ -225,6 +230,8 @@ public class BukkitConnectionListener extends AbstractConnectionListener impleme
                 e.disallow(PlayerLoginEvent.Result.KICK_OTHER, "");
             }
         }
+
+        PermissibleInjector.checkInjected(e.getPlayer(), this.plugin.getLogger());
     }
 
     // Wait until the last priority to unload, so plugins can still perform permission checks on this event
@@ -235,7 +242,7 @@ public class BukkitConnectionListener extends AbstractConnectionListener impleme
 
         // perform unhooking from bukkit objects 1 tick later.
         // this allows plugins listening after us on MONITOR to still have intact permissions data
-        this.plugin.getBootstrap().getServer().getScheduler().runTaskLater(this.plugin.getBootstrap(), () -> {
+        this.plugin.getBootstrap().getServer().getScheduler().runTaskLater(this.plugin.getLoader(), () -> {
             // Remove the custom permissible
             try {
                 PermissibleInjector.uninject(player, true);

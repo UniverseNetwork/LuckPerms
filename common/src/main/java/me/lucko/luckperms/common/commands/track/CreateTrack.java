@@ -26,7 +26,6 @@
 package me.lucko.luckperms.common.commands.track;
 
 import me.lucko.luckperms.common.actionlog.LoggedAction;
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.SingleCommand;
 import me.lucko.luckperms.common.command.access.CommandPermission;
 import me.lucko.luckperms.common.command.spec.CommandSpec;
@@ -41,27 +40,29 @@ import net.kyori.adventure.text.Component;
 import net.luckperms.api.actionlog.Action;
 import net.luckperms.api.event.cause.CreationCause;
 
+import java.util.Locale;
+
 public class CreateTrack extends SingleCommand {
     public CreateTrack() {
         super(CommandSpec.CREATE_TRACK, "CreateTrack", CommandPermission.CREATE_TRACK, Predicates.not(1));
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, ArgumentList args, String label) {
+    public void execute(LuckPermsPlugin plugin, Sender sender, ArgumentList args, String label) {
         if (args.isEmpty()) {
             sendUsage(sender, label);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
-        String trackName = args.get(0).toLowerCase();
+        String trackName = args.get(0).toLowerCase(Locale.ROOT);
         if (!DataConstraints.TRACK_NAME_TEST.test(trackName)) {
             Message.TRACK_INVALID_ENTRY.send(sender, trackName);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         if (plugin.getStorage().loadTrack(trackName).join().isPresent()) {
             Message.ALREADY_EXISTS.send(sender, trackName);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         try {
@@ -69,7 +70,7 @@ public class CreateTrack extends SingleCommand {
         } catch (Exception e) {
             plugin.getLogger().warn("Error whilst creating track", e);
             Message.CREATE_ERROR.send(sender, Component.text(trackName));
-            return CommandResult.FAILURE;
+            return;
         }
 
         Message.CREATE_SUCCESS.send(sender, Component.text(trackName));
@@ -77,7 +78,5 @@ public class CreateTrack extends SingleCommand {
         LoggedAction.build().source(sender).targetName(trackName).targetType(Action.Target.Type.TRACK)
                 .description("create").build()
                 .submit(plugin, sender);
-
-        return CommandResult.SUCCESS;
     }
 }

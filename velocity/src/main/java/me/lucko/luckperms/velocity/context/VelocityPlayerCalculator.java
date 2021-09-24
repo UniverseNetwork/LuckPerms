@@ -27,7 +27,7 @@ package me.lucko.luckperms.velocity.context;
 
 import com.velocitypowered.api.event.PostOrder;
 import com.velocitypowered.api.event.Subscribe;
-import com.velocitypowered.api.event.player.ServerConnectedEvent;
+import com.velocitypowered.api.event.player.ServerPostConnectEvent;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ServerConnection;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
@@ -43,6 +43,7 @@ import net.luckperms.api.context.DefaultContextKeys;
 import net.luckperms.api.context.ImmutableContextSet;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.jetbrains.annotations.NotNull;
 
 public class VelocityPlayerCalculator implements ContextCalculator<Player> {
     private final LPVelocityPlugin plugin;
@@ -61,7 +62,7 @@ public class VelocityPlayerCalculator implements ContextCalculator<Player> {
     }
 
     @Override
-    public ContextSet estimatePotentialContexts() {
+    public @NotNull @NonNull ContextSet estimatePotentialContexts() {
         ImmutableContextSet.Builder builder = new ImmutableContextSetImpl.BuilderImpl();
         for (RegisteredServer server : this.plugin.getBootstrap().getProxy().getAllServers()) {
             builder.add(DefaultContextKeys.WORLD_KEY, server.getServerInfo().getName());
@@ -70,7 +71,7 @@ public class VelocityPlayerCalculator implements ContextCalculator<Player> {
     }
 
     @Subscribe(order = PostOrder.FIRST)
-    public void onServerConnect(ServerConnectedEvent e) {
+    public void onServerConnect(ServerPostConnectEvent e) {
         this.plugin.getContextManager().signalContextUpdate(e.getPlayer());
     }
 }

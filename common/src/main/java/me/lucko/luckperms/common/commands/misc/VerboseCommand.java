@@ -25,7 +25,6 @@
 
 package me.lucko.luckperms.common.commands.misc;
 
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.SingleCommand;
 import me.lucko.luckperms.common.command.access.CommandPermission;
 import me.lucko.luckperms.common.command.spec.CommandSpec;
@@ -46,6 +45,7 @@ import me.lucko.luckperms.common.verbose.VerboseListener;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class VerboseCommand extends SingleCommand {
     public VerboseCommand() {
@@ -53,19 +53,19 @@ public class VerboseCommand extends SingleCommand {
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, ArgumentList args, String label) {
+    public void execute(LuckPermsPlugin plugin, Sender sender, ArgumentList args, String label) {
         if (args.isEmpty()) {
             sendUsage(sender, label);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         VerboseHandler verboseHandler = plugin.getVerboseHandler();
-        String mode = args.get(0).toLowerCase();
+        String mode = args.get(0).toLowerCase(Locale.ROOT);
 
         if (mode.equals("command") || mode.equals("cmd")) {
             if (args.size() < 3) {
                 sendDetailedUsage(sender, label);
-                return CommandResult.INVALID_ARGS;
+                return;
             }
 
             String name = args.get(1);
@@ -76,7 +76,7 @@ public class VerboseCommand extends SingleCommand {
             } else {
                 if (!CommandPermission.VERBOSE_COMMAND_OTHERS.isAuthorized(sender)) {
                     Message.COMMAND_NO_PERMISSION.send(sender);
-                    return CommandResult.NO_PERMISSION;
+                    return;
                 }
 
                 executor = plugin.getOnlineSenders()
@@ -87,7 +87,7 @@ public class VerboseCommand extends SingleCommand {
 
                 if (executor == null) {
                     Message.USER_NOT_ONLINE.send(sender, name);
-                    return CommandResult.STATE_ERROR;
+                    return;
                 }
             }
 
@@ -108,7 +108,7 @@ public class VerboseCommand extends SingleCommand {
                 }
             });
 
-            return CommandResult.SUCCESS;
+            return;
         }
 
         if (mode.equals("on") || mode.equals("true") || mode.equals("record")) {
@@ -124,7 +124,7 @@ public class VerboseCommand extends SingleCommand {
                 compiledFilter = VerboseFilter.compile(filter);
             } catch (InvalidFilterException e) {
                 Message.VERBOSE_INVALID_FILTER.send(sender, filter, e.getCause().getMessage());
-                return CommandResult.FAILURE;
+                return;
             }
 
             boolean notify = !mode.equals("record");
@@ -145,7 +145,7 @@ public class VerboseCommand extends SingleCommand {
                 }
             }
 
-            return CommandResult.SUCCESS;
+            return;
         }
 
         if (mode.equals("off") || mode.equals("false") || mode.equals("paste") || mode.equals("upload")) {
@@ -162,26 +162,25 @@ public class VerboseCommand extends SingleCommand {
                         id = listener.uploadPasteData(plugin.getBytebin());
                     } catch (UnsuccessfulRequestException e) {
                         Message.GENERIC_HTTP_REQUEST_FAILURE.send(sender, e.getResponse().code(), e.getResponse().message());
-                        return CommandResult.STATE_ERROR;
+                        return;
                     } catch (IOException e) {
                         plugin.getLogger().warn("Error uploading data to bytebin", e);
                         Message.GENERIC_HTTP_UNKNOWN_FAILURE.send(sender);
-                        return CommandResult.STATE_ERROR;
+                        return;
                     }
 
                     String url = plugin.getConfiguration().get(ConfigKeys.VERBOSE_VIEWER_URL_PATTERN) + id;
                     Message.VERBOSE_RESULTS_URL.send(sender, url);
-                    return CommandResult.SUCCESS;
+                    return;
                 }
             } else {
                 Message.VERBOSE_OFF.send(sender);
             }
 
-            return CommandResult.SUCCESS;
+            return;
         }
 
         sendUsage(sender, label);
-        return CommandResult.INVALID_ARGS;
     }
 
     @Override

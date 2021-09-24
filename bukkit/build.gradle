@@ -1,5 +1,5 @@
 plugins {
-    id 'com.github.johnrengelman.shadow' version '2.0.4'
+    id 'com.github.johnrengelman.shadow' version '7.0.0'
 }
 
 repositories {
@@ -8,29 +8,26 @@ repositories {
 }
 
 dependencies {
-    compile project(':common')
+    implementation project(':common')
+    compileOnly project(':common:loader-utils')
 
     compileOnly 'com.destroystokyo.paper:paper-api:1.15.2-R0.1-SNAPSHOT'
-    compileOnly 'me.lucko:adventure-platform-bukkit:4.0.0' // re: this artifact - see note in common/build.gradle
-    compileOnly 'me.lucko:commodore:1.7'
-    compileOnly('net.milkbowl.vault:VaultAPI:1.6') {
+    compileOnly('me.lucko:adventure-platform-bukkit:4.8.1') {
+        exclude(module: 'adventure-bom')
+        exclude(module: 'adventure-api')
+        exclude(module: 'adventure-nbt')
+    }
+    compileOnly 'me.lucko:commodore:1.10'
+    compileOnly('net.milkbowl.vault:VaultAPI:1.7') {
         exclude(module: 'bukkit')
     }
     compileOnly 'lilypad.client.connect:api:0.0.1-SNAPSHOT'
 }
 
-processResources {
-    from(sourceSets.main.resources.srcDirs) {
-        expand 'pluginVersion': project.ext.fullVersion
-        include 'plugin.yml'
-    }
-}
-
 shadowJar {
-    archiveName = "LuckPerms-Bukkit-${project.ext.fullVersion}.jar"
+    archiveFileName = 'luckperms-bukkit.jarinjar'
 
     dependencies {
-        include(dependency('net.luckperms:.*'))
         include(dependency('me.lucko.luckperms:.*'))
     }
 
@@ -48,6 +45,7 @@ shadowJar {
     relocate 'com.mongodb', 'me.lucko.luckperms.lib.mongodb'
     relocate 'org.bson', 'me.lucko.luckperms.lib.bson'
     relocate 'redis.clients.jedis', 'me.lucko.luckperms.lib.jedis'
+    relocate 'com.rabbitmq', 'me.lucko.luckperms.lib.rabbitmq'
     relocate 'org.apache.commons.pool2', 'me.lucko.luckperms.lib.commonspool2'
     relocate 'ninja.leaping.configurate', 'me.lucko.luckperms.lib.configurate'
 }

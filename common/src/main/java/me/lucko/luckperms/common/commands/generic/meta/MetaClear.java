@@ -26,7 +26,6 @@
 package me.lucko.luckperms.common.commands.generic.meta;
 
 import me.lucko.luckperms.common.actionlog.LoggedAction;
-import me.lucko.luckperms.common.command.CommandResult;
 import me.lucko.luckperms.common.command.abstraction.CommandException;
 import me.lucko.luckperms.common.command.abstraction.GenericChildCommand;
 import me.lucko.luckperms.common.command.access.ArgumentPermissions;
@@ -47,6 +46,7 @@ import net.luckperms.api.model.data.DataType;
 import net.luckperms.api.node.NodeType;
 
 import java.util.List;
+import java.util.Locale;
 
 public class MetaClear extends GenericChildCommand {
     public MetaClear() {
@@ -54,15 +54,15 @@ public class MetaClear extends GenericChildCommand {
     }
 
     @Override
-    public CommandResult execute(LuckPermsPlugin plugin, Sender sender, PermissionHolder target, ArgumentList args, String label, CommandPermission permission) throws CommandException {
+    public void execute(LuckPermsPlugin plugin, Sender sender, PermissionHolder target, ArgumentList args, String label, CommandPermission permission) throws CommandException {
         if (ArgumentPermissions.checkModifyPerms(plugin, sender, permission, target)) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         NodeType<?> type = null;
         if (!args.isEmpty()) {
-            String typeId = args.get(0).toLowerCase();
+            String typeId = args.get(0).toLowerCase(Locale.ROOT);
             if (typeId.equals("any") || typeId.equals("all") || typeId.equals("*")) {
                 type = NodeType.META_OR_CHAT_META;
             }
@@ -95,7 +95,7 @@ public class MetaClear extends GenericChildCommand {
         if (ArgumentPermissions.checkContext(plugin, sender, permission, context) ||
                 ArgumentPermissions.checkGroup(plugin, sender, target, context)) {
             Message.COMMAND_NO_PERMISSION.send(sender);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         if (context.isEmpty()) {
@@ -105,14 +105,13 @@ public class MetaClear extends GenericChildCommand {
         }
 
         int changed = before - target.normalData().size();
-        Message.META_CLEAR_SUCCESS.send(sender, target, type.name().toLowerCase(), context, changed);
+        Message.META_CLEAR_SUCCESS.send(sender, target, type.name().toLowerCase(Locale.ROOT), context, changed);
 
         LoggedAction.build().source(sender).target(target)
                 .description("meta", "clear", context)
                 .build().submit(plugin, sender);
 
         StorageAssistant.save(target, sender, plugin);
-        return CommandResult.SUCCESS;
     }
 
     @Override

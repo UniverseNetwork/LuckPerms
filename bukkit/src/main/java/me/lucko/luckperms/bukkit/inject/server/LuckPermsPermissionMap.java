@@ -40,6 +40,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -133,7 +134,7 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
 
     @Override
     public boolean remove(Object key, Object value) {
-        return key != null && value != null && super.remove(key, uninject(((Permission) value)));
+        return key != null && value != null && super.remove(key, uninject((Permission) value));
     }
 
     // check for null
@@ -180,7 +181,7 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
                 continue;
             }
 
-            String key = e.getKey().toLowerCase();
+            String key = e.getKey().toLowerCase(Locale.ROOT);
 
             if (accumulator.containsKey(key)) {
                 continue; // Prevent infinite loops
@@ -241,6 +242,10 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
 
         NotifyingChildrenMap(Map<String, Boolean> delegate) {
             this.delegate = delegate;
+
+            for (String key : this.delegate.keySet()) {
+                LuckPermsPermissionMap.this.plugin.getPermissionRegistry().insert(key);
+            }
         }
 
         @Override
@@ -251,6 +256,7 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
         @Override
         public Boolean put(@NonNull String key, @NonNull Boolean value) {
             Boolean ret = super.put(key, value);
+            LuckPermsPermissionMap.this.plugin.getPermissionRegistry().insert(key);
             LuckPermsPermissionMap.this.update();
             return ret;
         }
@@ -258,6 +264,9 @@ public final class LuckPermsPermissionMap extends ForwardingMap<String, Permissi
         @Override
         public void putAll(@NonNull Map<? extends String, ? extends Boolean> map) {
             super.putAll(map);
+            for (String key : map.keySet()) {
+                LuckPermsPermissionMap.this.plugin.getPermissionRegistry().insert(key);
+            }
             LuckPermsPermissionMap.this.update();
         }
 

@@ -44,7 +44,7 @@ public class BukkitSenderFactory extends SenderFactory<LPBukkitPlugin, CommandSe
 
     public BukkitSenderFactory(LPBukkitPlugin plugin) {
         super(plugin);
-        this.audiences = BukkitAudiences.create(plugin.getBootstrap());
+        this.audiences = BukkitAudiences.create(plugin.getLoader());
     }
 
     @Override
@@ -92,6 +92,11 @@ public class BukkitSenderFactory extends SenderFactory<LPBukkitPlugin, CommandSe
     @Override
     protected void performCommand(CommandSender sender, String command) {
         getPlugin().getBootstrap().getServer().dispatchCommand(sender, command);
+    }
+
+    @Override
+    protected boolean isConsole(CommandSender sender) {
+        return sender instanceof ConsoleCommandSender || sender instanceof RemoteConsoleCommandSender;
     }
 
     @Override

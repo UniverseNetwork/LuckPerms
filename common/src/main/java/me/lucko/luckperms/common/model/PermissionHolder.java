@@ -25,7 +25,6 @@
 
 package me.lucko.luckperms.common.model;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 
 import me.lucko.luckperms.common.cacheddata.HolderCachedDataManager;
@@ -64,6 +63,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.SortedSet;
@@ -233,9 +233,13 @@ public abstract class PermissionHolder {
         invalidateCache();
     }
 
-    public void setNodes(DataType type, Iterable<? extends Node> set) {
-        getData(type).setContent(set);
+    public MutateResult setNodes(DataType type, Iterable<? extends Node> set, boolean callEvent) {
+        MutateResult res = getData(type).setContent(set);
         invalidateCache();
+        if (callEvent) {
+            getPlugin().getEventDispatcher().dispatchNodeChanges(this, type, res);
+        }
+        return res;
     }
 
     public void mergeNodes(DataType type, Iterable<? extends Node> set) {
@@ -244,7 +248,7 @@ public abstract class PermissionHolder {
     }
 
     private DataType[] queryOrder(QueryOptions queryOptions) {
-        return DataSelector.select(queryOptions, getIdentifier());
+        return DataSelector.selectOrder(queryOptions, getIdentifier());
     }
 
     public List<Node> getOwnNodes(QueryOptions queryOptions) {
@@ -360,7 +364,7 @@ public abstract class PermissionHolder {
     private static void processExportedPermissions(Map<String, Boolean> accumulator, List<Node> entries, boolean convertToLowercase, boolean resolveShorthand) {
         for (Node node : entries) {
             if (convertToLowercase) {
-                accumulator.putIfAbsent(node.getKey().toLowerCase(), node.getValue());
+                accumulator.putIfAbsent(node.getKey().toLowerCase(Locale.ROOT), node.getValue());
             } else {
                 accumulator.putIfAbsent(node.getKey(), node.getValue());
             }
@@ -371,7 +375,7 @@ public abstract class PermissionHolder {
                 Collection<String> shorthand = node.resolveShorthand();
                 for (String s : shorthand) {
                     if (convertToLowercase) {
-                        accumulator.putIfAbsent(s.toLowerCase(), node.getValue());
+                        accumulator.putIfAbsent(s.toLowerCase(Locale.ROOT), node.getValue());
                     } else {
                         accumulator.putIfAbsent(s, node.getValue());
                     }
@@ -427,10 +431,10 @@ public abstract class PermissionHolder {
 
     private boolean auditTemporaryNodes(DataType dataType) {
         MutateResult result = getData(dataType).removeIf(Node::hasExpired);
-        this.plugin.getEventDispatcher().dispatchNodeChanges(this, dataType, result);
         if (!result.isEmpty()) {
             invalidateCache();
         }
+        this.plugin.getEventDispatcher().dispatchNodeChanges(this, dataType, result);
         return !result.isEmpty();
     }
 
@@ -461,11 +465,10 @@ public abstract class PermissionHolder {
         }
 
         MutateResult changes = getData(dataType).add(node);
+        invalidateCache();
         if (callEvent) {
             this.plugin.getEventDispatcher().dispatchNodeChanges(this, dataType, changes);
         }
-
-        invalidateCache();
 
         return DataMutateResult.SUCCESS;
     }
@@ -499,9 +502,8 @@ public abstract class PermissionHolder {
                 if (newNode != null) {
                     // Remove the old Node & add the new one.
                     MutateResult changes = data.removeThenAdd(otherMatch, newNode);
-                    this.plugin.getEventDispatcher().dispatchNodeChanges(this, dataType, changes);
-
                     invalidateCache();
+                    this.plugin.getEventDispatcher().dispatchNodeChanges(this, dataType, changes);
 
                     return new MergedNodeResult(DataMutateResult.SUCCESS, newNode);
                 }
@@ -518,9 +520,8 @@ public abstract class PermissionHolder {
         }
 
         MutateResult changes = getData(dataType).remove(node);
-        this.plugin.getEventDispatcher().dispatchNodeChanges(this, dataType, changes);
-
         invalidateCache();
+        this.plugin.getEventDispatcher().dispatchNodeChanges(this, dataType, changes);
 
         return DataMutateResult.SUCCESS;
     }
@@ -541,9 +542,8 @@ public abstract class PermissionHolder {
 
                     // Remove the old Node & add the new one.
                     MutateResult changes = data.removeThenAdd(otherMatch, newNode);
-                    this.plugin.getEventDispatcher().dispatchNodeChanges(this, dataType, changes);
-
                     invalidateCache();
+                    this.plugin.getEventDispatcher().dispatchNodeChanges(this, dataType, changes);
 
                     return new MergedNodeResult(DataMutateResult.SUCCESS, newNode);
                 }
@@ -570,8 +570,8 @@ public abstract class PermissionHolder {
             getPlugin().getUserManager().giveDefaultIfNeeded((User) this);
         }
 
-        this.plugin.getEventDispatcher().dispatchNodeClear(this, dataType, changes);
         invalidateCache();
+        this.plugin.getEventDispatcher().dispatchNodeClear(this, dataType, changes);
         return true;
     }
 
@@ -587,8 +587,8 @@ public abstract class PermissionHolder {
             getPlugin().getUserManager().giveDefaultIfNeeded((User) this);
         }
 
-        this.plugin.getEventDispatcher().dispatchNodeClear(this, dataType, changes);
         invalidateCache();
+        this.plugin.getEventDispatcher().dispatchNodeClear(this, dataType, changes);
         return true;
     }
 

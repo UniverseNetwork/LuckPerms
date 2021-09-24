@@ -32,13 +32,14 @@ import me.lucko.luckperms.common.cacheddata.CacheMetadata;
 import me.lucko.luckperms.common.cacheddata.type.MetaAccumulator;
 import me.lucko.luckperms.common.calculator.CalculatorFactory;
 import me.lucko.luckperms.common.calculator.PermissionCalculator;
-import me.lucko.luckperms.common.calculator.processor.MapProcessor;
+import me.lucko.luckperms.common.calculator.processor.DirectProcessor;
 import me.lucko.luckperms.common.calculator.processor.PermissionProcessor;
 import me.lucko.luckperms.common.calculator.processor.SpongeWildcardProcessor;
 import me.lucko.luckperms.common.calculator.processor.WildcardProcessor;
 import me.lucko.luckperms.common.metastacking.SimpleMetaStackDefinition;
 import me.lucko.luckperms.common.metastacking.StandardStackElements;
 import me.lucko.luckperms.common.plugin.LuckPermsPlugin;
+import me.lucko.luckperms.common.verbose.VerboseCheckTarget;
 import me.lucko.luckperms.sponge.calculator.FixedDefaultsProcessor;
 
 import net.luckperms.api.metastacking.DuplicateRemovalFunction;
@@ -46,6 +47,8 @@ import net.luckperms.api.metastacking.MetaStackDefinition;
 import net.luckperms.api.node.ChatMetaType;
 import net.luckperms.api.query.QueryOptions;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.function.IntFunction;
 
@@ -65,7 +68,8 @@ public class CalculatedSubjectCachedDataManager extends AbstractCachedDataManage
 
     @Override
     protected CacheMetadata getMetadataForQueryOptions(QueryOptions queryOptions) {
-        return new CacheMetadata(null, this.subject.getParentCollection().getIdentifier() + "/" + this.subject.getIdentifier(), queryOptions);
+        VerboseCheckTarget target = VerboseCheckTarget.of(this.subject.getParentCollection().getIdentifier(), this.subject.getIdentifier());
+        return new CacheMetadata(null, target, queryOptions);
     }
 
     @Override
@@ -97,8 +101,8 @@ public class CalculatedSubjectCachedDataManager extends AbstractCachedDataManage
 
     @Override
     public PermissionCalculator build(QueryOptions queryOptions, CacheMetadata metadata) {
-        ImmutableList.Builder<PermissionProcessor> processors = ImmutableList.builder();
-        processors.add(new MapProcessor());
+        List<PermissionProcessor> processors = new ArrayList<>(4);
+        processors.add(new DirectProcessor());
         processors.add(new SpongeWildcardProcessor());
         processors.add(new WildcardProcessor());
 
@@ -106,6 +110,6 @@ public class CalculatedSubjectCachedDataManager extends AbstractCachedDataManage
             processors.add(new FixedDefaultsProcessor(this.subject.getService(), queryOptions, this.subject.getDefaults(), true));
         }
 
-        return new PermissionCalculator(getPlugin(), metadata, processors.build());
+        return new PermissionCalculator(getPlugin(), metadata, processors);
     }
 }

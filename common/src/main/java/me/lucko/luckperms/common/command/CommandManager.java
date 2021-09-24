@@ -26,6 +26,7 @@
 package me.lucko.luckperms.common.command;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import me.lucko.luckperms.common.command.abstraction.Command;
 import me.lucko.luckperms.common.command.abstraction.CommandException;
@@ -40,7 +41,6 @@ import me.lucko.luckperms.common.commands.group.ListGroups;
 import me.lucko.luckperms.common.commands.log.LogParentCommand;
 import me.lucko.luckperms.common.commands.misc.ApplyEditsCommand;
 import me.lucko.luckperms.common.commands.misc.BulkUpdateCommand;
-import me.lucko.luckperms.common.commands.misc.CheckCommand;
 import me.lucko.luckperms.common.commands.misc.EditorCommand;
 import me.lucko.luckperms.common.commands.misc.ExportCommand;
 import me.lucko.luckperms.common.commands.misc.ImportCommand;
@@ -61,6 +61,8 @@ import me.lucko.luckperms.common.locale.Message;
 import me.lucko.luckperms.common.model.Group;
 import me.lucko.luckperms.common.plugin.AbstractLuckPermsPlugin;
 import me.lucko.luckperms.common.plugin.LuckPermsPlugin;
+import me.lucko.luckperms.common.plugin.scheduler.SchedulerAdapter;
+import me.lucko.luckperms.common.plugin.scheduler.SchedulerTask;
 import me.lucko.luckperms.common.sender.Sender;
 import me.lucko.luckperms.common.util.ImmutableCollectors;
 
@@ -68,13 +70,19 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -84,12 +92,13 @@ import java.util.stream.Collectors;
 public class CommandManager {
 
     private final LuckPermsPlugin plugin;
-
-    // the default executor to run commands on
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
-
+    private final ExecutorService executor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder()
+            .setDaemon(true)
+            .setNameFormat("luckperms-command-executor")
+            .build()
+    );
+    private final AtomicBoolean executingCommand = new AtomicBoolean(false);
     private final TabCompletions tabCompletions;
-
     private final Map<String, Command<?>> mainCommands;
 
     public CommandManager(LuckPermsPlugin plugin) {
@@ -107,7 +116,6 @@ public class CommandManager {
                 .add(new VerboseCommand())
                 .add(new TreeCommand())
                 .add(new SearchCommand())
-                .add(new CheckCommand())
                 .add(new NetworkSyncCommand())
                 .add(new ImportCommand())
                 .add(new ExportCommand())
@@ -123,7 +131,7 @@ public class CommandManager {
                 .add(new ListTracks())
                 .build()
                 .stream()
-                .collect(ImmutableCollectors.toMap(c -> c.getName().toLowerCase(), Function.identity()));
+                .collect(ImmutableCollectors.toMap(c -> c.getName().toLowerCase(Locale.ROOT), Function.identity()));
     }
 
     public LuckPermsPlugin getPlugin() {
@@ -134,26 +142,76 @@ public class CommandManager {
         return this.tabCompletions;
     }
 
-    public CompletableFuture<CommandResult> executeCommand(Sender sender, String label, List<String> args) {
-        return CompletableFuture.supplyAsync(() -> {
+    public CompletableFuture<Void> executeCommand(Sender sender, String label, List<String> args) {
+        SchedulerAdapter scheduler = this.plugin.getBootstrap().getScheduler();
+        List<String> argsCopy = new ArrayList<>(args);
+
+        // if the executingCommand flag is set, there is another command executing at the moment
+        if (this.executingCommand.get()) {
+            Message.ALREADY_EXECUTING_COMMAND.send(sender);
+        }
+
+        // a reference to the thread being used to execute the command
+        AtomicReference<Thread> executorThread = new AtomicReference<>();
+        // a reference to the timeout task scheduled to catch if this command takes too long to execute
+        AtomicReference<SchedulerTask> timeoutTask = new AtomicReference<>();
+
+        // schedule the actual execution of the command using the command executor service
+        CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+            // set flags
+            executorThread.set(Thread.currentThread());
+            this.executingCommand.set(true);
+
+            // actually try to execute the command
             try {
-                return execute(sender, label, args);
+                execute(sender, label, args);
             } catch (Throwable e) {
+                // catch any exception
                 this.plugin.getLogger().severe("Exception whilst executing command: " + args, e);
-                return null;
+            } finally {
+                // unset flags
+                this.executingCommand.set(false);
+                executorThread.set(null);
+
+                // cancel the timeout task
+                SchedulerTask timeout;
+                if ((timeout = timeoutTask.get()) != null) {
+                    timeout.cancel();
+                }
             }
         }, this.executor);
+
+        // schedule another task to catch if the command doesn't complete after 10 seconds
+        timeoutTask.set(scheduler.asyncLater(() -> {
+            if (!future.isDone()) {
+                handleCommandTimeout(executorThread, argsCopy);
+            }
+        }, 10, TimeUnit.SECONDS));
+
+        return future;
+    }
+
+    private void handleCommandTimeout(AtomicReference<Thread> thread, List<String> args) {
+        Thread executorThread = thread.get();
+        if (executorThread == null) {
+            this.plugin.getLogger().warn("Command execution " + args + " has not completed - is another command execution blocking it?");
+        } else {
+            String stackTrace = Arrays.stream(executorThread.getStackTrace())
+                    .map(el -> "  " + el.toString())
+                    .collect(Collectors.joining("\n"));
+            this.plugin.getLogger().warn("Command execution " + args + " has not completed. Trace: \n" + stackTrace);
+        }
     }
 
     public boolean hasPermissionForAny(Sender sender) {
         return this.mainCommands.values().stream().anyMatch(c -> c.shouldDisplay() && c.isAuthorized(sender));
     }
 
-    private CommandResult execute(Sender sender, String label, List<String> arguments) {
+    private void execute(Sender sender, String label, List<String> arguments) {
         applyConvenienceAliases(arguments, true);
 
         // Handle no arguments
-        if (arguments.isEmpty() || (arguments.size() == 1 && arguments.get(0).trim().isEmpty())) {
+        if (arguments.isEmpty() || arguments.size() == 1 && arguments.get(0).trim().isEmpty()) {
             sender.sendMessage(Message.prefixed(Component.text()
                     .color(NamedTextColor.DARK_GREEN)
                     .append(Component.text("Running "))
@@ -165,7 +223,7 @@ public class CommandManager {
 
             if (hasPermissionForAny(sender)) {
                 Message.VIEW_AVAILABLE_COMMANDS_PROMPT.send(sender, label);
-                return CommandResult.SUCCESS;
+                return;
             }
 
             Collection<? extends Group> groups = this.plugin.getGroupManager().getAll().values();
@@ -174,22 +232,22 @@ public class CommandManager {
             } else {
                 Message.NO_PERMISSION_FOR_SUBCOMMANDS.send(sender);
             }
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         // Look for the main command.
-        Command<?> main = this.mainCommands.get(arguments.get(0).toLowerCase());
+        Command<?> main = this.mainCommands.get(arguments.get(0).toLowerCase(Locale.ROOT));
 
         // Main command not found
         if (main == null) {
             sendCommandUsage(sender, label);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         // Check the Sender has permission to use the main command.
         if (!main.isAuthorized(sender)) {
             sendCommandUsage(sender, label);
-            return CommandResult.NO_PERMISSION;
+            return;
         }
 
         arguments.remove(0); // remove the main command arg.
@@ -197,21 +255,17 @@ public class CommandManager {
         // Check the correct number of args were given for the main command
         if (main.getArgumentCheck().test(arguments.size())) {
             main.sendDetailedUsage(sender, label);
-            return CommandResult.INVALID_ARGS;
+            return;
         }
 
         // Try to execute the command.
-        CommandResult result;
         try {
-            result = main.execute(this.plugin, sender, null, new ArgumentList(arguments), label);
+            main.execute(this.plugin, sender, null, new ArgumentList(arguments), label);
         } catch (CommandException e) {
-            result = e.handle(sender, label, main);
+            e.handle(sender, label, main);
         } catch (Throwable e) {
             e.printStackTrace();
-            result = CommandResult.FAILURE;
         }
-
-        return result;
     }
 
     public List<String> tabCompleteCommand(Sender sender, List<String> arguments) {
@@ -223,7 +277,7 @@ public class CommandManager {
                 .collect(Collectors.toList());
 
         return TabCompleter.create()
-                .at(0, CompletionSupplier.startsWith(() -> mains.stream().map(c -> c.getName().toLowerCase())))
+                .at(0, CompletionSupplier.startsWith(() -> mains.stream().map(c -> c.getName().toLowerCase(Locale.ROOT))))
                 .from(1, partial -> mains.stream()
                         .filter(m -> m.getName().equalsIgnoreCase(arguments.get(0)))
                         .findFirst()
@@ -280,7 +334,7 @@ public class CommandManager {
         // '/lp user Luck p set --> /lp user Luck permission set' etc
         //                ^                       ^^^^^^^^^^
         if (args.size() >= 3 && (rewriteLastArgument || args.size() >= 4)) {
-            String arg0 = args.get(0).toLowerCase();
+            String arg0 = args.get(0).toLowerCase(Locale.ROOT);
             if (arg0.equals("user") || arg0.equals("group")) {
                 replaceArgs(args, 2, arg -> {
                     switch (arg) {
@@ -300,7 +354,7 @@ public class CommandManager {
                 // '/lp user Luck permission i' --> '/lp user Luck permission info' etc
                 //                           ^                                ^^^^
                 if (args.size() >= 4 && (rewriteLastArgument || args.size() >= 5)) {
-                    String arg2 = args.get(2).toLowerCase();
+                    String arg2 = args.get(2).toLowerCase(Locale.ROOT);
                     if (arg2.equals("permission") || arg2.equals("parent") || arg2.equals("meta")) {
                         replaceArgs(args, 3, arg -> arg.equals("i") ? "info" : null);
                     }
@@ -310,7 +364,7 @@ public class CommandManager {
     }
 
     private static void replaceArgs(List<String> args, int i, Function<String, String> rewrites) {
-        String arg = args.get(i).toLowerCase();
+        String arg = args.get(i).toLowerCase(Locale.ROOT);
         String rewrite = rewrites.apply(arg);
         if (rewrite != null) {
             args.remove(i);

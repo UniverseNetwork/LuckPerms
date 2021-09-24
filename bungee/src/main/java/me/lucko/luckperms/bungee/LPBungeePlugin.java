@@ -35,6 +35,7 @@ import me.lucko.luckperms.bungee.messaging.BungeeMessagingFactory;
 import me.lucko.luckperms.common.api.LuckPermsApiProvider;
 import me.lucko.luckperms.common.calculator.CalculatorFactory;
 import me.lucko.luckperms.common.command.CommandManager;
+import me.lucko.luckperms.common.config.ConfigKeys;
 import me.lucko.luckperms.common.config.generic.adapter.ConfigurationAdapter;
 import me.lucko.luckperms.common.dependencies.Dependency;
 import me.lucko.luckperms.common.event.AbstractEventBus;
@@ -46,19 +47,14 @@ import me.lucko.luckperms.common.model.manager.user.StandardUserManager;
 import me.lucko.luckperms.common.plugin.AbstractLuckPermsPlugin;
 import me.lucko.luckperms.common.plugin.util.AbstractConnectionListener;
 import me.lucko.luckperms.common.sender.Sender;
-import me.lucko.luckperms.common.tasks.CacheHousekeepingTask;
-import me.lucko.luckperms.common.tasks.ExpireTemporaryTask;
 
 import net.luckperms.api.LuckPerms;
+import net.luckperms.api.context.DefaultContextKeys;
 import net.luckperms.api.query.QueryOptions;
+import net.md_5.bungee.api.plugin.Plugin;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 /**
@@ -84,6 +80,10 @@ public class LPBungeePlugin extends AbstractLuckPermsPlugin {
         return this.bootstrap;
     }
 
+    public Plugin getLoader() {
+        return this.bootstrap.getLoader();
+    }
+
     @Override
     protected void setupSenderFactory() {
         this.senderFactory = new BungeeSenderFactory(this);
@@ -99,14 +99,14 @@ public class LPBungeePlugin extends AbstractLuckPermsPlugin {
 
     @Override
     protected ConfigurationAdapter provideConfigurationAdapter() {
-        return new BungeeConfigAdapter(this, resolveConfig());
+        return new BungeeConfigAdapter(this, resolveConfig("config.yml").toFile());
     }
 
     @Override
     protected void registerPlatformListeners() {
         this.connectionListener = new BungeeConnectionListener(this);
-        this.bootstrap.getProxy().getPluginManager().registerListener(this.bootstrap, this.connectionListener);
-        this.bootstrap.getProxy().getPluginManager().registerListener(this.bootstrap, new BungeePermissionCheckListener(this));
+        this.bootstrap.getProxy().getPluginManager().registerListener(this.bootstrap.getLoader(), this.connectionListener);
+        this.bootstrap.getProxy().getPluginManager().registerListener(this.bootstrap.getLoader(), new BungeePermissionCheckListener(this));
     }
 
     @Override
@@ -140,11 +140,14 @@ public class LPBungeePlugin extends AbstractLuckPermsPlugin {
     protected void setupContextManager() {
         this.contextManager = new BungeeContextManager(this);
 
-        BungeePlayerCalculator playerCalculator = new BungeePlayerCalculator(this);
-        this.bootstrap.getProxy().getPluginManager().registerListener(this.bootstrap, playerCalculator);
-        this.contextManager.registerCalculator(playerCalculator);
+        Set<String> disabledContexts = getConfiguration().get(ConfigKeys.DISABLED_CONTEXTS);
+        if (!disabledContexts.contains(DefaultContextKeys.WORLD_KEY)) {
+            BungeePlayerCalculator playerCalculator = new BungeePlayerCalculator(this);
+            this.bootstrap.getProxy().getPluginManager().registerListener(this.bootstrap.getLoader(), playerCalculator);
+            this.contextManager.registerCalculator(playerCalculator);
+        }
 
-        if (this.bootstrap.getProxy().getPluginManager().getPlugin("RedisBungee") != null) {
+        if (!disabledContexts.contains("proxy") && this.bootstrap.getProxy().getPluginManager().getPlugin("RedisBungee") != null) {
             this.contextManager.registerCalculator(new RedisBungeeCalculator());
         }
     }
@@ -165,29 +168,8 @@ public class LPBungeePlugin extends AbstractLuckPermsPlugin {
     }
 
     @Override
-    protected void registerHousekeepingTasks() {
-        this.bootstrap.getScheduler().asyncRepeating(new ExpireTemporaryTask(this), 3, TimeUnit.SECONDS);
-        this.bootstrap.getScheduler().asyncRepeating(new CacheHousekeepingTask(this), 2, TimeUnit.MINUTES);
-    }
-
-    @Override
     protected void performFinalSetup() {
 
-    }
-
-    private File resolveConfig() {
-        File configFile = new File(this.bootstrap.getDataFolder(), "config.yml");
-
-        if (!configFile.exists()) {
-            this.bootstrap.getDataFolder().mkdirs();
-            try (InputStream is = this.bootstrap.getResourceAsStream("config.yml")) {
-                Files.copy(is, configFile.toPath());
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        return configFile;
     }
 
     @Override

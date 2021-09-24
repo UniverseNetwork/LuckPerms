@@ -26,6 +26,7 @@
 package me.lucko.luckperms.common.context.contextset;
 
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterators;
 import com.google.common.collect.SetMultimap;
 
 import net.luckperms.api.context.Context;
@@ -35,9 +36,13 @@ import net.luckperms.api.context.DefaultContextKeys;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.Spliterator;
 
 public abstract class AbstractContextSet implements ContextSet {
 
@@ -91,6 +96,18 @@ public abstract class AbstractContextSet implements ContextSet {
 
     protected abstract boolean otherContainsAll(ContextSet other, ContextSatisfyMode mode);
 
+    public abstract Context[] toArray();
+
+    @Override
+    public @NonNull Iterator<Context> iterator() {
+        return Iterators.forArray(toArray());
+    }
+
+    @Override
+    public Spliterator<Context> spliterator() {
+        return Arrays.spliterator(toArray());
+    }
+
     @Override
     public boolean isEmpty() {
         return backing().isEmpty();
@@ -111,7 +128,7 @@ public abstract class AbstractContextSet implements ContextSet {
         if (!Context.isValidKey(key)) {
             throw new IllegalArgumentException("key is (effectively) empty");
         }
-        return key.toLowerCase();
+        return key.toLowerCase(Locale.ROOT);
     }
 
     static String sanitizeValue(String value) {
@@ -119,7 +136,7 @@ public abstract class AbstractContextSet implements ContextSet {
         if (!Context.isValidValue(value)) {
             throw new IllegalArgumentException("value is (effectively) empty");
         }
-        return value.toLowerCase();
+        return value.toLowerCase(Locale.ROOT);
     }
 
     public static boolean isGlobalServerWorldEntry(String key, String value) {

@@ -128,6 +128,12 @@ data:
     #   connection time limit.
     maximum-lifetime: 1800000 # 30 minutes
 
+    # This setting controls how frequently the pool will 'ping' a connection in order to prevent it
+    # from being timed out by the database or network infrastructure, measured in milliseconds.
+    # - The value should be less than maximum-lifetime and greater than 30000 (30 seconds).
+    # - Setting the value to zero will disable the keepalive functionality.
+    keepalive-time: 0
+
     # This setting controls the maximum number of milliseconds that the plugin will wait for a
     # connection from the pool, before timing out.
     connection-timeout: 5000 # 5 seconds
@@ -148,15 +154,25 @@ data:
       #verifyServerCertificate: false
 
   # The prefix for all LuckPerms SQL tables.
+  #
+  # - This only applies for remote SQL storage types (MySQL, MariaDB, etc).
   # - Change this if you want to use different tables for different servers.
   table-prefix: 'luckperms_'
 
-  # The prefix to use for all LuckPerms collections. Change this if you want to use different
-  # collections for different servers. The default is no prefix.
+  # The prefix to use for all LuckPerms MongoDB collections.
+  #
+  # - This only applies for the MongoDB storage type.
+  # - Change this if you want to use different collections for different servers. The default is no
+  # prefix.
   mongodb-collection-prefix: ''
 
-  # MongoDB ClientConnectionURI for use with replica sets and custom connection options
-  # - See https://docs.mongodb.com/manual/reference/connection-string/
+  # The connection string URI to use to connect to the MongoDB instance.
+  #
+  # - When configured, this setting will override anything defined in the address, database,
+  #   username or password fields above.
+  # - If you have a connection string that starts with 'mongodb://' or 'mongodb+srv://', enter it
+  #   below.
+  # - For more information, please see https://docs.mongodb.com/manual/reference/connection-string/
   mongodb-connection-uri: ''
 
 # Define settings for a "split" storage setup.
@@ -218,6 +234,8 @@ watch-files: true
 #                option is set to 'auto' and SQL storage is in use. Set to 'notsql' to disable this.
 #   => redis     Uses Redis pub-sub to push changes. Your server connection info must be configured
 #                below.
+#   => rabbitmq  Uses RabbitMQ pub-sub to push changes. Your server connection info must be
+#                configured below.
 #   => auto      Attempts to automatically setup a messaging service using redis or sql.
 messaging-service: auto
 
@@ -240,6 +258,15 @@ redis:
   enabled: false
   address: localhost
   password: ''
+
+# Settings for RabbitMQ.
+# Port 5672 is used by default; set address to "host:port" if differs
+rabbitmq:
+  enabled: false
+  address: localhost
+  vhost: '/'
+  username: 'guest'
+  password: 'guest'
 
 
 
@@ -413,6 +440,11 @@ post-traversal-inheritance-sort: false
 #                                   entries in A are also in B.
 context-satisfy-mode: at-least-one-value-per-key
 
+# LuckPerms has a number of built-in contexts. These can be disabled by adding the context key to
+# the list below.
+disabled-contexts:
+#  - "world"
+
 # +----------------------------------------------------------------------------------------------+ #
 # | Permission resolution settings                                                               | #
 # +----------------------------------------------------------------------------------------------+ #
@@ -474,7 +506,7 @@ apply-sponge-implicit-wildcards: false
 # - If this option is set to true, LuckPerms will consider any negated declarations made by
 #   plugins before it considers wildcards. (similar to the way the OP system works)
 # - If this option is set to false, LuckPerms will consider any wildcard assignments first.
-apply-default-negated-permissions-before-wildcards: true
+apply-default-negated-permissions-before-wildcards: false
 
 # If the plugin should parse regex permissions.
 #
@@ -581,6 +613,14 @@ debug-logins: false
 # - Note that due to the design of the storage implementation, usernames must still be 16 characters
 #   or less.
 allow-invalid-usernames: true
+
+# If LuckPerms should not require users to confirm bulkupdate operations.
+#
+# - When set to true, operations will be executed immediately.
+# - This is not recommended, as bulkupdate has the potential to irreversibly delete large amounts of
+#   data, and is not designed to be executed automatically.
+# - If automation is needed, users should prefer using the LuckPerms API.
+skip-bulkupdate-confirmation: false
 
 # If LuckPerms should allow a users primary group to be removed with the 'parent remove' command.
 #

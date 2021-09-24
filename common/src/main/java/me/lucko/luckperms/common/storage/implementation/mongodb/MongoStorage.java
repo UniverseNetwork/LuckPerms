@@ -75,6 +75,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -521,7 +522,7 @@ public class MongoStorage implements StorageImplementation {
 
     @Override
     public PlayerSaveResult savePlayerData(UUID uniqueId, String username) {
-        username = username.toLowerCase();
+        username = username.toLowerCase(Locale.ROOT);
         MongoCollection<Document> c = this.database.getCollection(this.prefix + "uuid");
 
         // find any existing mapping
@@ -560,7 +561,7 @@ public class MongoStorage implements StorageImplementation {
     @Override
     public UUID getPlayerUniqueId(String username) {
         MongoCollection<Document> c = this.database.getCollection(this.prefix + "uuid");
-        Document doc = c.find(new Document("name", username.toLowerCase())).first();
+        Document doc = c.find(new Document("name", username.toLowerCase(Locale.ROOT))).first();
         if (doc != null) {
             return getDocumentId(doc);
         }
@@ -605,7 +606,10 @@ public class MongoStorage implements StorageImplementation {
             //noinspection unchecked
             List<Document> permsList = (List<Document>) document.get("permissions");
             for (Document d : permsList) {
-                nodes.add(nodeFromDoc(d));
+                Node node = nodeFromDoc(d);
+                if (node != null) {
+                    nodes.add(node);
+                }
             }
         }
         return nodes;
@@ -643,6 +647,10 @@ public class MongoStorage implements StorageImplementation {
 
     private static Node nodeFromDoc(Document document) {
         String key = document.containsKey("permission") ? document.getString("permission") : document.getString("key");
+
+        if (key == null || key.isEmpty()) {
+            return null;
+        }
 
         NodeBuilder<?, ?> builder = NodeBuilders.determineMostApplicable(key)
                 .value(document.getBoolean("value", true));

@@ -28,6 +28,7 @@ package me.lucko.luckperms.velocity;
 import me.lucko.luckperms.common.api.LuckPermsApiProvider;
 import me.lucko.luckperms.common.calculator.CalculatorFactory;
 import me.lucko.luckperms.common.command.CommandManager;
+import me.lucko.luckperms.common.config.ConfigKeys;
 import me.lucko.luckperms.common.config.generic.adapter.ConfigurationAdapter;
 import me.lucko.luckperms.common.dependencies.Dependency;
 import me.lucko.luckperms.common.event.AbstractEventBus;
@@ -39,9 +40,6 @@ import me.lucko.luckperms.common.model.manager.user.StandardUserManager;
 import me.lucko.luckperms.common.plugin.AbstractLuckPermsPlugin;
 import me.lucko.luckperms.common.plugin.util.AbstractConnectionListener;
 import me.lucko.luckperms.common.sender.Sender;
-import me.lucko.luckperms.common.tasks.CacheHousekeepingTask;
-import me.lucko.luckperms.common.tasks.ExpireTemporaryTask;
-import me.lucko.luckperms.common.util.MoreFiles;
 import me.lucko.luckperms.velocity.calculator.VelocityCalculatorFactory;
 import me.lucko.luckperms.velocity.context.VelocityContextManager;
 import me.lucko.luckperms.velocity.context.VelocityPlayerCalculator;
@@ -50,15 +48,11 @@ import me.lucko.luckperms.velocity.listeners.VelocityConnectionListener;
 import me.lucko.luckperms.velocity.messaging.VelocityMessagingFactory;
 
 import net.luckperms.api.LuckPerms;
+import net.luckperms.api.context.DefaultContextKeys;
 import net.luckperms.api.query.QueryOptions;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 /**
@@ -101,7 +95,7 @@ public class LPVelocityPlugin extends AbstractLuckPermsPlugin {
 
     @Override
     protected ConfigurationAdapter provideConfigurationAdapter() {
-        return new VelocityConfigAdapter(this, resolveConfig());
+        return new VelocityConfigAdapter(this, resolveConfig("config.yml"));
     }
 
     @Override
@@ -138,9 +132,12 @@ public class LPVelocityPlugin extends AbstractLuckPermsPlugin {
     protected void setupContextManager() {
         this.contextManager = new VelocityContextManager(this);
 
-        VelocityPlayerCalculator playerCalculator = new VelocityPlayerCalculator(this);
-        this.bootstrap.getProxy().getEventManager().register(this.bootstrap, playerCalculator);
-        this.contextManager.registerCalculator(playerCalculator);
+        Set<String> disabledContexts = getConfiguration().get(ConfigKeys.DISABLED_CONTEXTS);
+        if (!disabledContexts.contains(DefaultContextKeys.WORLD_KEY)) {
+            VelocityPlayerCalculator playerCalculator = new VelocityPlayerCalculator(this);
+            this.bootstrap.getProxy().getEventManager().register(this.bootstrap, playerCalculator);
+            this.contextManager.registerCalculator(playerCalculator);
+        }
     }
 
     @Override
@@ -159,30 +156,8 @@ public class LPVelocityPlugin extends AbstractLuckPermsPlugin {
     }
 
     @Override
-    protected void registerHousekeepingTasks() {
-        this.bootstrap.getScheduler().asyncRepeating(new ExpireTemporaryTask(this), 3, TimeUnit.SECONDS);
-        this.bootstrap.getScheduler().asyncRepeating(new CacheHousekeepingTask(this), 2, TimeUnit.MINUTES);
-    }
-
-    @Override
     protected void performFinalSetup() {
 
-    }
-
-    private Path resolveConfig() {
-        Path path = this.bootstrap.getConfigDirectory().resolve("config.yml");
-        if (!Files.exists(path)) {
-            try {
-                MoreFiles.createDirectoriesIfNotExists(this.bootstrap.getConfigDirectory());
-                try (InputStream is = getClass().getClassLoader().getResourceAsStream("config.yml")) {
-                    Files.copy(is, path);
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        return path;
     }
 
     @Override

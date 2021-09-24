@@ -27,8 +27,11 @@ package me.lucko.luckperms.common.verbose.event;
 
 import me.lucko.luckperms.common.calculator.result.TristateResult;
 import me.lucko.luckperms.common.util.gson.JObject;
+import me.lucko.luckperms.common.verbose.VerboseCheckTarget;
 
 import net.luckperms.api.query.QueryOptions;
+
+import java.util.Locale;
 
 public class PermissionCheckEvent extends VerboseEvent {
 
@@ -47,7 +50,7 @@ public class PermissionCheckEvent extends VerboseEvent {
      */
     private final TristateResult result;
 
-    public PermissionCheckEvent(Origin origin, String checkTarget, QueryOptions checkQueryOptions, long checkTime, Throwable checkTrace, String checkThread, String permission, TristateResult result) {
+    public PermissionCheckEvent(Origin origin, VerboseCheckTarget checkTarget, QueryOptions checkQueryOptions, long checkTime, Throwable checkTrace, String checkThread, String permission, TristateResult result) {
         super(checkTarget, checkQueryOptions, checkTime, checkTrace, checkThread);
         this.origin = origin;
         this.permission = permission;
@@ -71,7 +74,7 @@ public class PermissionCheckEvent extends VerboseEvent {
         object.add("type", "permission");
         object.add("permission", this.permission);
 
-        object.add("result", this.result.result().name().toLowerCase());
+        object.add("result", this.result.result().name().toLowerCase(Locale.ROOT));
         if (this.result.processorClass() != null || this.result.cause() != null) {
             JObject resultInfo = new JObject();
             if (this.result.processorClass() != null) {
@@ -83,14 +86,14 @@ public class PermissionCheckEvent extends VerboseEvent {
             object.add("resultInfo", resultInfo);
         }
 
-        object.add("origin", this.origin.name().toLowerCase());
+        object.add("origin", this.origin.name().toLowerCase(Locale.ROOT));
     }
 
     @Override
     public boolean eval(String variable) {
         return variable.equals("permission") ||
-                getCheckTarget().equalsIgnoreCase(variable) ||
-                getPermission().toLowerCase().startsWith(variable.toLowerCase()) ||
+                getCheckTarget().describe().equalsIgnoreCase(variable) ||
+                getPermission().toLowerCase(Locale.ROOT).startsWith(variable.toLowerCase(Locale.ROOT)) ||
                 getResult().result().name().equalsIgnoreCase(variable);
     }
 

@@ -128,7 +128,7 @@ public abstract class AbstractNodeBuilder<N extends ScopedNode<N, B>, B extends 
     }
 
     @Override
-    public @NonNull <T> B withMetadata(@NonNull NodeMetadataKey<T> key, @Nullable T metadata) {
+    public <T> @NonNull B withMetadata(@NonNull NodeMetadataKey<T> key, @Nullable T metadata) {
         Objects.requireNonNull(key, "key");
         if (metadata == null) {
             this.metadata.remove(key);
@@ -136,6 +136,12 @@ public abstract class AbstractNodeBuilder<N extends ScopedNode<N, B>, B extends 
             this.metadata.put(key, metadata);
         }
         return (B) this;
+    }
+
+    protected static void ensureDefined(Object value, String description) {
+        if (value == null) {
+            throw new IllegalStateException(description + " has not been defined");
+        }
     }
 
 }

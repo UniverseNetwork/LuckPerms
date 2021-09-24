@@ -42,7 +42,7 @@ public class BungeeSenderFactory extends SenderFactory<LPBungeePlugin, CommandSe
 
     public BungeeSenderFactory(LPBungeePlugin plugin) {
         super(plugin);
-        this.audiences = BungeeAudiences.create(plugin.getBootstrap());
+        this.audiences = BungeeAudiences.create(plugin.getLoader());
     }
 
     @Override
@@ -79,6 +79,11 @@ public class BungeeSenderFactory extends SenderFactory<LPBungeePlugin, CommandSe
     @Override
     protected void performCommand(CommandSender sender, String command) {
         getPlugin().getBootstrap().getProxy().getPluginManager().dispatchCommand(sender, command);
+    }
+
+    @Override
+    protected boolean isConsole(CommandSender sender) {
+        return !(sender instanceof ProxiedPlayer);
     }
 
     @Override

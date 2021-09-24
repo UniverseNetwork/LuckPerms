@@ -56,7 +56,6 @@ public abstract class AbstractNode<N extends ScopedNode<N, B>, B extends NodeBui
      */
     public static final char NODE_SEPARATOR = '.';
     public static final String NODE_SEPARATOR_STRING = String.valueOf(NODE_SEPARATOR);
-    public static final int NODE_SEPARATOR_CODE = Character.getNumericValue(NODE_SEPARATOR);
 
     // node attributes
     protected final String key;
@@ -98,7 +97,7 @@ public abstract class AbstractNode<N extends ScopedNode<N, B>, B extends NodeBui
     }
 
     @Override
-    public <T> Optional<T> getMetadata(NodeMetadataKey<T> key) {
+    public <T> Optional<T> getMetadata(@NonNull NodeMetadataKey<T> key) {
         //noinspection unchecked
         T value = (T) this.metadata.get(key);
         return Optional.ofNullable(value);
@@ -139,7 +138,7 @@ public abstract class AbstractNode<N extends ScopedNode<N, B>, B extends NodeBui
     public boolean equals(Object o) {
         if (o == this) return true;
         if (!(o instanceof Node)) return false;
-        return NodeEquality.KEY_VALUE_EXPIRY_CONTEXTS.equals(this, ((AbstractNode<?, ?>) o));
+        return NodeEquality.KEY_VALUE_EXPIRY_CONTEXTS.equals(this, (AbstractNode<?, ?>) o);
     }
 
     @Override
