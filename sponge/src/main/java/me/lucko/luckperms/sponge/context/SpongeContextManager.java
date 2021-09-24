@@ -38,6 +38,7 @@ import me.lucko.luckperms.sponge.service.model.TemporaryCauseHolderSubject;
 import net.luckperms.api.context.ContextCalculator;
 import net.luckperms.api.context.ContextConsumer;
 import net.luckperms.api.context.ImmutableContextSet;
+import net.luckperms.api.context.StaticContextCalculator;
 import net.luckperms.api.query.QueryOptions;
 
 import org.spongepowered.api.entity.living.player.server.ServerPlayer;
@@ -67,9 +68,13 @@ public class SpongeContextManager extends ContextManager<Subject, ServerPlayer> 
                 ((ContextCalculatorProxy) calculator).calculate(cause, consumer);
             } else if (actualSubject != null) {
                 calculator.calculate(actualSubject, consumer);
-            } else {
-                throw new IllegalArgumentException("Unable to extract Subject from Cause " + cause);
-            }
+            } else if (calculator instanceof StaticContextCalculator) {
+                ((StaticContextCalculator) calculator).calculate(consumer);
+            } /* else {
+                // we just have to fail...
+                // there's no way to call a LuckPerms ContextCalculator if a Subject instance
+                // doesn't exist for the cause.
+            } */
         } else {
             Object associatedObject = subject.associatedObject().orElse(null);
             if (associatedObject instanceof Subject) {
