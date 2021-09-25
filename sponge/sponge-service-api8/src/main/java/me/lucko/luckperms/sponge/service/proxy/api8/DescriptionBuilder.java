@@ -46,14 +46,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class DescriptionBuilder implements PermissionDescription.Builder, LPProxiedServiceObject {
-
-    public static LPPermissionDescription registerDescription(LPPermissionService service, PermissionDescription description) {
-        if (!description.owner().isPresent()) {
-            return null;
-        }
-        return service.registerPermissionDescription(description.id(), description.description().orElse(null), description.owner().get());
-    }
-
     private final @NonNull LPPermissionService service;
     private final @NonNull PluginContainer container;
     private final @NonNull Map<String, Tristate> roles = new HashMap<>();

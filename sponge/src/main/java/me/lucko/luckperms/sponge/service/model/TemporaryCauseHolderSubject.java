@@ -28,6 +28,7 @@ package me.lucko.luckperms.sponge.service.model;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.api.event.Cause;
+import org.spongepowered.api.event.EventContextKeys;
 import org.spongepowered.api.service.context.Context;
 import org.spongepowered.api.service.permission.Subject;
 import org.spongepowered.api.service.permission.SubjectCollection;
@@ -45,7 +46,16 @@ public class TemporaryCauseHolderSubject implements Subject {
 
     public TemporaryCauseHolderSubject(@NonNull Cause cause) {
         this.cause = cause;
-        this.subject = this.cause.first(Subject.class).orElse(null);
+        this.subject = subjectFromCause(this.cause);
+    }
+
+    private static Subject subjectFromCause(Cause cause) {
+        Subject subject = cause.context().get(EventContextKeys.SUBJECT).orElse(null);
+        if (subject != null) {
+            return subject;
+        }
+
+        return cause.first(Subject.class).orElse(null);
     }
 
     public @NonNull Cause getCause() {
@@ -58,7 +68,7 @@ public class TemporaryCauseHolderSubject implements Subject {
 
     @Override
     public String toString() {
-        return "CauseSubject(" + "cause=" + this.cause + ')';
+        return "CauseSubject(cause=" + this.cause + ')';
     }
 
     @Override

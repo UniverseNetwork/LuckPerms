@@ -40,6 +40,7 @@ import org.spongepowered.api.event.Cause;
 import org.spongepowered.api.service.context.Context;
 import org.spongepowered.api.service.context.ContextCalculator;
 import org.spongepowered.api.service.permission.PermissionDescription;
+import org.spongepowered.api.service.permission.PermissionService;
 import org.spongepowered.api.service.permission.Subject;
 import org.spongepowered.api.service.permission.SubjectCollection;
 import org.spongepowered.api.service.permission.SubjectReference;
@@ -116,10 +117,11 @@ public final class PermissionServiceProxy implements PermissionAndContextService
         Objects.requireNonNull(subjectIdentifier, "subjectIdentifier");
 
         // test the identifiers
-        String collection = collectionIdentifier.toLowerCase(Locale.ROOT);
-        if (collection.equals("user") && !this.handle.getUserSubjects().getIdentifierValidityPredicate().test(subjectIdentifier)) {
+        if (collectionIdentifier.equalsIgnoreCase(PermissionService.SUBJECTS_USER) &&
+                !this.handle.getUserSubjects().getIdentifierValidityPredicate().test(subjectIdentifier)) {
             throw new IllegalArgumentException("Subject identifier '" + subjectIdentifier + "' does not pass the validity predicate for the user subject collection");
-        } else if (collection.equals("group") && !this.handle.getGroupSubjects().getIdentifierValidityPredicate().test(subjectIdentifier)) {
+        } else if (collectionIdentifier.equalsIgnoreCase(PermissionService.SUBJECTS_GROUP) &&
+                !this.handle.getGroupSubjects().getIdentifierValidityPredicate().test(subjectIdentifier)) {
             throw new IllegalArgumentException("Subject identifier '" + subjectIdentifier + "' does not pass the validity predicate for the group subject collection");
         }
 

@@ -119,23 +119,15 @@ public final class SubjectReferenceFactory {
         private SubjectReferenceAttributes(String collectionId, String id) {
             this.collectionId = collectionId.toLowerCase(Locale.ROOT);
             this.id = id.toLowerCase(Locale.ROOT);
-            this.hashCode = calculateHashCode();
+            this.hashCode = Objects.hash(this.collectionId, this.id);
         }
 
         @Override
         public boolean equals(Object o) {
             if (o == this) return true;
             if (!(o instanceof SubjectReferenceAttributes)) return false;
-            final SubjectReferenceAttributes other = (SubjectReferenceAttributes) o;
-            return this.collectionId.equals(other.collectionId) && this.id.equals(other.id);
-        }
-
-        private int calculateHashCode() {
-            final int PRIME = 59;
-            int result = 1;
-            result = result * PRIME + this.collectionId.hashCode();
-            result = result * PRIME + this.id.hashCode();
-            return result;
+            final SubjectReferenceAttributes that = (SubjectReferenceAttributes) o;
+            return this.collectionId.equals(that.collectionId) && this.id.equals(that.id);
         }
 
         @Override

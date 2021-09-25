@@ -31,7 +31,6 @@ import me.lucko.luckperms.sponge.service.model.LPProxiedSubject;
 import me.lucko.luckperms.sponge.service.model.LPSubject;
 import me.lucko.luckperms.sponge.service.model.LPSubjectCollection;
 import me.lucko.luckperms.sponge.service.model.LPSubjectData;
-import me.lucko.luckperms.sponge.service.proxy.api8.DescriptionBuilder;
 import me.lucko.luckperms.sponge.service.proxy.api8.PermissionDescriptionProxy;
 import me.lucko.luckperms.sponge.service.proxy.api8.PermissionServiceProxy;
 import me.lucko.luckperms.sponge.service.proxy.api8.SubjectCollectionProxy;
@@ -69,10 +68,6 @@ public final class ProxyFactory {
 
     public static PermissionDescription toSponge(LPPermissionDescription luckPerms) {
         return new PermissionDescriptionProxy(luckPerms.getService(), luckPerms);
-    }
-
-    public static LPPermissionDescription registerDescription(LPPermissionService service, PermissionDescription description) {
-        return DescriptionBuilder.registerDescription(service, description);
     }
 
 }
