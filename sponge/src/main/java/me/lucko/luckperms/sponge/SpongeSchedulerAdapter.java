@@ -62,8 +62,8 @@ public class SpongeSchedulerAdapter implements SchedulerAdapter {
         this.pluginContainer = pluginContainer;
 
         this.asyncScheduler = game.asyncScheduler();
-        this.async = this.asyncScheduler.createExecutor(pluginContainer);
-        this.sync = Suppliers.memoize(() -> getSyncScheduler().createExecutor(this.pluginContainer));
+        this.async = this.asyncScheduler.executor(pluginContainer);
+        this.sync = Suppliers.memoize(() -> getSyncScheduler().executor(this.pluginContainer));
     }
 
     @Override
