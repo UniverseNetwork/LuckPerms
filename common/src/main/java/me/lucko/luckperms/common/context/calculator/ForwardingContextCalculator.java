@@ -23,44 +23,15 @@
  *  SOFTWARE.
  */
 
-package me.lucko.luckperms.common.context;
+package me.lucko.luckperms.common.context.calculator;
 
-import me.lucko.luckperms.common.cache.ExpiringCache;
-
-import net.luckperms.api.context.ImmutableContextSet;
-import net.luckperms.api.query.QueryOptions;
-
-import org.checkerframework.checker.nullness.qual.NonNull;
-
-import java.util.concurrent.TimeUnit;
+import net.luckperms.api.context.ContextCalculator;
 
 /**
- * Implementation of {@link QueryOptionsSupplier} that caches results.
- *
- * @param <T> the player type
+ * Represents a {@link ContextCalculator} which delegates calls to another object.
  */
-public final class QueryOptionsCache<T> extends ExpiringCache<QueryOptions> implements QueryOptionsSupplier {
-    private final T subject;
-    private final ContextManager<T, ?> contextManager;
+public interface ForwardingContextCalculator<T> extends ContextCalculator<T> {
 
-    public QueryOptionsCache(T subject, ContextManager<T, ?> contextManager) {
-        super(50L, TimeUnit.MILLISECONDS); // expire roughly every tick
-        this.subject = subject;
-        this.contextManager = contextManager;
-    }
+    Object delegate();
 
-    @Override
-    protected @NonNull QueryOptions supply() {
-        return this.contextManager.calculate(this.subject);
-    }
-
-    @Override
-    public QueryOptions getQueryOptions() {
-        return get();
-    }
-
-    @Override
-    public ImmutableContextSet getContextSet() {
-        return get().context();
-    }
 }

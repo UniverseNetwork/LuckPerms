@@ -33,7 +33,7 @@ import me.lucko.luckperms.common.cacheddata.type.SimpleMetaValueSelector;
 import me.lucko.luckperms.common.config.generic.KeyedConfiguration;
 import me.lucko.luckperms.common.config.generic.key.ConfigKey;
 import me.lucko.luckperms.common.config.generic.key.SimpleConfigKey;
-import me.lucko.luckperms.common.context.WorldNameRewriter;
+import me.lucko.luckperms.common.context.calculator.WorldNameRewriter;
 import me.lucko.luckperms.common.graph.TraversalAlgorithm;
 import me.lucko.luckperms.common.metastacking.SimpleMetaStackDefinition;
 import me.lucko.luckperms.common.metastacking.StandardStackElements;
@@ -44,6 +44,7 @@ import me.lucko.luckperms.common.storage.StorageType;
 import me.lucko.luckperms.common.storage.implementation.split.SplitStorageType;
 import me.lucko.luckperms.common.storage.misc.StorageCredentials;
 import me.lucko.luckperms.common.util.ImmutableCollectors;
+import me.lucko.luckperms.common.util.Predicates;
 
 import net.luckperms.api.context.ContextSatisfyMode;
 import net.luckperms.api.metastacking.DuplicateRemovalFunction;
@@ -64,6 +65,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -516,6 +518,16 @@ public final class ConfigKeys {
     public static final ConfigKey<Boolean> FABRIC_INTEGRATED_SERVER_OWNER_BYPASSES_CHECKS = booleanKey("integrated-server-owner-bypasses-checks", true);
 
     /**
+     * Disabled context calculators
+     */
+    public static final ConfigKey<Set<Predicate<String>>> DISABLED_CONTEXT_CALCULATORS = key(c -> {
+        return c.getStringList("disabled-context-calculators", ImmutableList.of())
+                .stream()
+                .map(Predicates::startsWithIgnoreCase)
+                .collect(ImmutableCollectors.toSet());
+    });
+
+    /**
      * The world rewrites map
      */
     public static final ConfigKey<WorldNameRewriter> WORLD_REWRITES = key(c -> {
@@ -631,6 +643,11 @@ public final class ConfigKeys {
      * The address of the redis server
      */
     public static final ConfigKey<String> REDIS_ADDRESS = notReloadable(stringKey("redis.address", null));
+
+    /**
+     * The username to connect with, or an empty string if it should use default
+     */
+    public static final ConfigKey<String> REDIS_USERNAME = notReloadable(stringKey("redis.username", ""));
 
     /**
      * The password in use by the redis server, or an empty string if there is no password

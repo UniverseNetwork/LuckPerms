@@ -23,40 +23,45 @@
  *  SOFTWARE.
  */
 
-package me.lucko.luckperms.common.context;
-
-import me.lucko.luckperms.common.config.ConfigKeys;
-import me.lucko.luckperms.common.config.LuckPermsConfiguration;
-import me.lucko.luckperms.common.context.contextset.ImmutableContextSetImpl;
-
-import net.luckperms.api.context.ContextConsumer;
-import net.luckperms.api.context.ContextSet;
-import net.luckperms.api.context.DefaultContextKeys;
-import net.luckperms.api.context.ImmutableContextSet;
-import net.luckperms.api.context.StaticContextCalculator;
+package me.lucko.luckperms.common.webeditor;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-public class ConfigurationContextCalculator implements StaticContextCalculator {
-    private final LuckPermsConfiguration config;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-    public ConfigurationContextCalculator(LuckPermsConfiguration config) {
-        this.config = config;
+/**
+ * Contains a store of known web editor sessions.
+ */
+public class WebEditorSessionStore {
+    private final Map<String, SessionState> sessions = new ConcurrentHashMap<>();
+
+    /**
+     * Adds a newly created session to the store.
+     *
+     * @param id the id of the session
+     */
+    public void addNewSession(String id) {
+        this.sessions.put(id, SessionState.IN_PROGRESS);
     }
 
-    @Override
-    public void calculate(@NonNull ContextConsumer consumer) {
-        String server = this.config.get(ConfigKeys.SERVER);
-        if (!server.equals("global")) {
-            consumer.accept(DefaultContextKeys.SERVER_KEY, server);
-        }
-        consumer.accept(this.config.getContextsFile().getStaticContexts());
+    /**
+     * Gets the session state for the given session id.
+     *
+     * @param id the id of the session
+     * @return the session state
+     */
+    public @NonNull SessionState getSessionState(String id) {
+        return this.sessions.getOrDefault(id, SessionState.NOT_KNOWN);
     }
 
-    @Override
-    public @NonNull ContextSet estimatePotentialContexts() {
-        ImmutableContextSet.Builder builder = new ImmutableContextSetImpl.BuilderImpl();
-        calculate(builder::add);
-        return builder.build();
+    /**
+     * Marks a given session as complete.
+     *
+     * @param id the id of the session
+     */
+    public void markSessionCompleted(String id) {
+        this.sessions.put(id, SessionState.COMPLETED);
     }
+
 }

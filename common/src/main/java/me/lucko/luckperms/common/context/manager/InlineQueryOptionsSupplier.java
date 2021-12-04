@@ -23,17 +23,23 @@
  *  SOFTWARE.
  */
 
-package me.lucko.luckperms.fabric.mixin;
+package me.lucko.luckperms.common.context.manager;
 
-import net.minecraft.network.packet.c2s.play.ClientSettingsC2SPacket;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.gen.Accessor;
+import net.luckperms.api.query.QueryOptions;
 
-@Mixin(ClientSettingsC2SPacket.class)
-public interface ClientSettingsC2SPacketAccessor {
+public final class InlineQueryOptionsSupplier<T> implements QueryOptionsSupplier {
+    private final T key;
+    private final LoadingCache<T, QueryOptions> cache;
 
-    @Accessor("language")
-    String getLanguage();
+    public InlineQueryOptionsSupplier(T key, LoadingCache<T, QueryOptions> cache) {
+        this.key = key;
+        this.cache = cache;
+    }
 
+    @Override
+    public QueryOptions getQueryOptions() {
+        return this.cache.get(this.key);
+    }
 }

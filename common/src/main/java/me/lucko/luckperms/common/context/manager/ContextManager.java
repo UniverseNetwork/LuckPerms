@@ -23,11 +23,12 @@
  *  SOFTWARE.
  */
 
-package me.lucko.luckperms.common.context;
+package me.lucko.luckperms.common.context.manager;
 
 import me.lucko.luckperms.common.cache.ExpiringCache;
 import me.lucko.luckperms.common.config.ConfigKeys;
-import me.lucko.luckperms.common.context.contextset.ImmutableContextSetImpl;
+import me.lucko.luckperms.common.context.ImmutableContextSetImpl;
+import me.lucko.luckperms.common.context.calculator.ForwardingContextCalculator;
 import me.lucko.luckperms.common.plugin.LuckPermsPlugin;
 
 import net.luckperms.api.context.ContextCalculator;
@@ -41,8 +42,10 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 /**
  * Base implementation of {@link ContextManager} which caches content lookups.
@@ -115,6 +118,16 @@ public abstract class ContextManager<S, P extends S> {
     protected abstract void invalidateCache(S subject);
 
     public void registerCalculator(ContextCalculator<? super S> calculator) {
+        String calculatorClass = calculator.getClass().getName();
+
+        Set<Predicate<String>> disabledCalculators = this.plugin.getConfiguration().get(ConfigKeys.DISABLED_CONTEXT_CALCULATORS);
+        for (Predicate<String> disabledPattern : disabledCalculators) {
+            if (disabledPattern.test(calculatorClass)) {
+                this.plugin.getLogger().info("Ignoring registration of disabled context calculator: " + calculatorClass);
+                return;
+            }
+        }
+
         this.calculators.add(calculator);
     }
 

@@ -23,13 +23,15 @@
  *  SOFTWARE.
  */
 
-package me.lucko.luckperms.common.context.contextset;
+package me.lucko.luckperms.common.context;
+
+import me.lucko.luckperms.common.context.comparator.ContextComparator;
 
 import net.luckperms.api.context.Context;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
 
-public final class ContextImpl implements Context {
+public final class ContextImpl implements Context, Comparable<Context> {
     private final String key;
     private final String value;
 
@@ -49,7 +51,13 @@ public final class ContextImpl implements Context {
     }
 
     @Override
+    public int compareTo(@NonNull Context o) {
+        return ContextComparator.INSTANCE.compare(this, o);
+    }
+
+    @Override
     public boolean equals(Object obj) {
+        if (this == obj) return true;
         if (!(obj instanceof Context)) return false;
         Context that = (Context) obj;
         return this.key.equals(that.getKey()) && this.value.equals(that.getValue());
@@ -58,5 +66,10 @@ public final class ContextImpl implements Context {
     @Override
     public int hashCode() {
         return this.key.hashCode() ^ this.value.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return this.key + '=' + this.value;
     }
 }

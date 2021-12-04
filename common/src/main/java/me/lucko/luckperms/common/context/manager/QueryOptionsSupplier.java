@@ -23,23 +23,20 @@
  *  SOFTWARE.
  */
 
-package me.lucko.luckperms.common.context;
+package me.lucko.luckperms.common.context.manager;
 
-import com.github.benmanes.caffeine.cache.LoadingCache;
-
+import net.luckperms.api.context.ImmutableContextSet;
 import net.luckperms.api.query.QueryOptions;
 
-public final class InlineQueryOptionsSupplier<T> implements QueryOptionsSupplier {
-    private final T key;
-    private final LoadingCache<T, QueryOptions> cache;
+/**
+ * Supplies contexts for a given subject.
+ */
+public interface QueryOptionsSupplier {
 
-    public InlineQueryOptionsSupplier(T key, LoadingCache<T, QueryOptions> cache) {
-        this.key = key;
-        this.cache = cache;
+    QueryOptions getQueryOptions();
+
+    default ImmutableContextSet getContextSet() {
+        return getQueryOptions().context();
     }
 
-    @Override
-    public QueryOptions getQueryOptions() {
-        return this.cache.get(this.key);
-    }
 }

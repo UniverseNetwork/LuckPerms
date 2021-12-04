@@ -23,49 +23,26 @@
  *  SOFTWARE.
  */
 
-package me.lucko.luckperms.fabric.model;
-
-import me.lucko.luckperms.common.context.manager.QueryOptionsCache;
-import me.lucko.luckperms.common.model.User;
-import me.lucko.luckperms.fabric.context.FabricContextManager;
-
-import net.luckperms.api.query.QueryOptions;
-import net.luckperms.api.util.Tristate;
-import net.minecraft.server.network.ServerPlayerEntity;
-
-import java.util.Locale;
+package me.lucko.luckperms.common.webeditor;
 
 /**
- * Mixin interface for {@link ServerPlayerEntity} implementing {@link User} related
- * caches and functions.
+ * Represents the state of a web editor session
  */
-public interface MixinUser {
-
-    User getLuckPermsUser();
-
-    QueryOptionsCache<ServerPlayerEntity> getQueryOptionsCache();
+enum SessionState {
 
     /**
-     * Gets (or creates using the manager) the objects {@link QueryOptionsCache}.
-     *
-     * @param contextManager the contextManager
-     * @return the cache
+     * The session is not known to this server.
      */
-    QueryOptionsCache<ServerPlayerEntity> getQueryOptionsCache(FabricContextManager contextManager);
-
-    Locale getCachedLocale();
+    NOT_KNOWN,
 
     /**
-     * Initialises permissions for this player using the given {@link User}.
-     *
-     * @param user the user
+     * The session is in progress - it has been created, but updates have not been applied.
      */
-    void initializePermissions(User user);
+    IN_PROGRESS,
 
-    // methods to perform permission checks using the User instance initialised on login
-
-    Tristate hasPermission(String permission);
-
-    Tristate hasPermission(String permission, QueryOptions queryOptions);
+    /**
+     * The session is complete - updates have been applied.
+     */
+    COMPLETED
 
 }
