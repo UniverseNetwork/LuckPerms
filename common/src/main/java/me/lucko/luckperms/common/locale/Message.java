@@ -99,7 +99,8 @@ public interface Message {
             .append(text('['))
             .append(text()
                     .decoration(BOLD, true)
-                    .append(text('L', AQUA))
+                    .append(text('U', AQUA))
+                    .append(text('N', YELLOW))
                     .append(text('P', DARK_AQUA))
             )
             .append(text(']'))
@@ -135,16 +136,19 @@ public interface Message {
         return join(newline(),
                 text()
                         .append(text("       ", AQUA))
-                        .append(text(" __    ", DARK_AQUA))
+                        .append(text("       ", YELLOW))
+                        .append(text("       ", DARK_AQUA))
                         .build(),
                 text()
-                        .append(text("  |    ", AQUA))
-                        .append(text("|__)   ", DARK_AQUA))
+                        .append(text("█ █ ", AQUA))
+                        .append(text("█▄ █ ", YELLOW))
+                        .append(text("█▀█ ", DARK_AQUA))
                         .append(infoLine1)
                         .build(),
                 text()
-                        .append(text("  |___ ", AQUA))
-                        .append(text("|      ", DARK_AQUA))
+                        .append(text("█▄█ ", AQUA))
+                        .append(text("█ ▀█ ", YELLOW))
+                        .append(text("█▀▀ ", DARK_AQUA))
                         .append(infoLine2)
                         .build(),
                 empty()
@@ -155,7 +159,7 @@ public interface Message {
             // "&3Use &a/{} help &3to view available commands."
             .key("luckperms.commandsystem.available-commands")
             .color(DARK_AQUA)
-            .args(text('/' + label + " help", GREEN))
+            .args(text('/' + label + " help", YELLOW))
             .append(FULL_STOP)
     );
 
