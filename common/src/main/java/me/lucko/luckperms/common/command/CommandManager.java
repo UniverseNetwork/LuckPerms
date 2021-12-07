@@ -293,7 +293,7 @@ public class CommandManager {
                 .append(Component.text("Running "))
                 .append(Component.text(AbstractLuckPermsPlugin.getPluginName(), NamedTextColor.AQUA))
                 .append(Component.space())
-                .append(Component.text("v" + this.plugin.getBootstrap().getVersion(), NamedTextColor.AQUA))
+                .append(Component.text("v" + this.plugin.getBootstrap().getVersion(), NamedTextColor.GOLD))
                 .append(Message.FULL_STOP)
         ));
 

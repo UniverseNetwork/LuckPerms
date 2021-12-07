@@ -82,7 +82,7 @@ public class LuckPermsVaultChat extends AbstractVaultChat {
 
     @Override
     public String getName() {
-        return "LuckPerms";
+        return "UniversePerms";
     }
 
     @Override
