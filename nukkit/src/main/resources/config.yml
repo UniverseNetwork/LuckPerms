@@ -232,11 +232,6 @@ watch-files: true
 #   => sql       Uses the SQL database to form a queue system for communication. Will only work when
 #                'storage-method' is set to MySQL or MariaDB. This is chosen by default if the
 #                option is set to 'auto' and SQL storage is in use. Set to 'notsql' to disable this.
-#   => pluginmsg Uses the plugin messaging channels to communicate with the proxy.
-#                LuckPerms must be installed on your proxy & all connected servers backend servers.
-#                Won't work if you have more than one proxy.
-#   => lilypad   Uses LilyPad pub-sub to push changes. You need to have the LilyPad-Connect plugin
-#                installed.
 #   => redis     Uses Redis pub-sub to push changes. Your server connection info must be configured
 #                below.
 #   => rabbitmq  Uses RabbitMQ pub-sub to push changes. Your server connection info must be
@@ -503,7 +498,7 @@ apply-wildcards: true
 #   and so on.
 apply-sponge-implicit-wildcards: false
 
-# If the plugin should apply negated Bukkit default permissions before it considers wildcard
+# If the plugin should apply negated Nukkit default permissions before it considers wildcard
 # assignments.
 #
 # - Plugin authors can define permissions which explicitly should not be given automatically to OPs.
@@ -525,18 +520,18 @@ apply-regex: true
 # - If set to true, LuckPerms will detect and expand shorthand node patterns.
 apply-shorthand: true
 
-# If the plugin should apply Bukkit child permissions.
+# If the plugin should apply Nukkit child permissions.
 #
 # - Plugin authors can define custom permissions structures for their plugin, which will be resolved
 #   and used by LuckPerms if this setting is enabled.
-apply-bukkit-child-permissions: true
+apply-nukkit-child-permissions: true
 
-# If the plugin should apply Bukkit default permissions.
+# If the plugin should apply Nukkit default permissions.
 #
 # - Plugin authors can define permissions which should be given to all users by default, or setup
 #   permissions which should/shouldn't be given to opped players.
 # - If this option is set to false, LuckPerms will ignore these defaults.
-apply-bukkit-default-permissions: true
+apply-nukkit-default-permissions: true
 
 # If the plugin should apply attachment permissions.
 #
@@ -545,7 +540,7 @@ apply-bukkit-default-permissions: true
 #   session, or until they're removed.
 # - If this option is set to false, LuckPerms will not include these attachment permissions when
 #   considering if a player should have access to a certain permission.
-apply-bukkit-attachment-permissions: true
+apply-nukkit-attachment-permissions: true
 
 # +----------------------------------------------------------------------------------------------+ #
 # | Extra settings                                                                               | #
@@ -614,57 +609,6 @@ auto-op: false
 commands-allow-op: true
 
 # +----------------------------------------------------------------------------------------------+ #
-# | Vault integration settings                                                                   | #
-# +----------------------------------------------------------------------------------------------+ #
-
-# If Vault lookups for offline players on the main server thread should be enabled.
-#
-# LuckPerms has a "catch" for plugins attempting to perform unsafe offline player data lookups
-# from the main server thread. This catch raises an exception (causes an error to occur) when unsafe
-# lookups are made, instead of allowing the lookup to happen, which would likely cause the server
-# to lag.
-#
-# However, if you're willing to accept the consequences, the catch can be disabled by setting this
-# option to 'true.
-vault-unsafe-lookups: false
-
-# If LuckPerms should use the 'display name' of a group when returning groups in Vault API calls.
-#
-# - When this option is set to true, the display name of the group is returned.
-# - When this option is set to false, the standard name/id of the group is returned.
-vault-group-use-displaynames: true
-
-# Controls which group LuckPerms should use for NPC players when handling Vault requests.
-#
-# - As NPCs aren't actually real players, LuckPerms does not load any user data for them. This
-#   becomes an issue when plugins want to check for their permissions using Vault.
-# - As a solution, Vault checks for NPCs fallback to a group, which is defined below.
-vault-npc-group: default
-
-# Controls how LuckPerms should consider the OP status of NPC players when handing Vault requests.
-#
-# - If you want NPCs to have the same permissions as "normal" players, set this option to false.
-# - If you want NPCs to have OP status, set this option to true.
-vault-npc-op-status: false
-
-# If the vault-server option below should be used.
-#
-# - When this option is set to false, the server value defined above under "server" is used.
-use-vault-server: false
-
-# The name of the server used within Vault operations.
-#
-# - If you don't want Vault operations to be server specific, set this to "global".
-# - Will only take effect if use-vault-server is set to true above.
-vault-server: global
-
-# If global permissions should be considered when retrieving meta or player groups
-vault-include-global: true
-
-# If Vault operations should ignore any world arguments if supplied.
-vault-ignore-world: false
-
-# +----------------------------------------------------------------------------------------------+ #
 # | Miscellaneous (and rarely used) settings                                                     | #
 # +----------------------------------------------------------------------------------------------+ #
 
@@ -677,7 +621,7 @@ debug-logins: false
 #
 # - Note that due to the design of the storage implementation, usernames must still be 16 characters
 #   or less.
-allow-invalid-usernames: false
+allow-invalid-usernames: true
 
 # If LuckPerms should not require users to confirm bulkupdate operations.
 #
@@ -697,13 +641,3 @@ disable-bulkupdate: false
 #
 # - When this happens, the plugin will set their primary group back to default.
 prevent-primary-group-removal: false
-
-# If LuckPerms should update the list of commands sent to the client when permissions are changed.
-update-client-command-list: true
-
-# If LuckPerms should attempt to register "Brigadier" command list data for its commands.
-register-command-list-data: true
-
-# If LuckPerms should attempt to resolve Vanilla command target selectors for LP commands.
-# See here for more info: https://minecraft.gamepedia.com/Commands#Target_selectors
-resolve-command-selectors: false
