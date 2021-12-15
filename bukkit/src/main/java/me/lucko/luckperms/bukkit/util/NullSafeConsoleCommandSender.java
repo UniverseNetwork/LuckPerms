@@ -62,7 +62,7 @@ public class NullSafeConsoleCommandSender implements ConsoleCommandSender {
 
     @Override
     public @NonNull String getName() {
-        return "CONSOLE";
+        return "SERVER";
     }
 
     @Override

@@ -89,7 +89,7 @@ public class LuckPermsVaultPermission extends AbstractVaultPermission {
 
     @Override
     public String getName() {
-        return "LuckPerms";
+        return "UniversePerms";
     }
 
     @Override

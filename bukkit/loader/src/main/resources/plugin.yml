@@ -1,8 +1,8 @@
-name: LuckPerms
+name: UniversePerms
 version: ${pluginVersion}
-description: A permissions plugin
-author: Luck
-website: https://luckperms.net
+description: A permissions plugin for universenetwork
+author: lucko, rajaopak
+website: https://universenetwork.id
 main: me.lucko.luckperms.bukkit.loader.BukkitLoaderPlugin
 load: STARTUP
 
@@ -24,6 +24,6 @@ loadbefore: [Vault]
 softdepend: [LilyPad-Connect, ViaVersion]
 
 commands:
-  luckperms:
+  universeperms:
     description: Manage permissions
-    aliases: [lp, perm, perms, permission, permissions]
+    aliases: [unp, perm, perms, permission, permissions]
