@@ -146,9 +146,9 @@ public class LPBukkitPlugin extends AbstractLuckPermsPlugin {
 
     @Override
     protected void registerCommands() {
-        PluginCommand command = this.bootstrap.getLoader().getCommand("luckperms");
+        PluginCommand command = this.bootstrap.getLoader().getCommand("universeperms");
         if (command == null) {
-            getLogger().severe("Unable to register /luckperms command with the server");
+            getLogger().severe("Unable to register /universeperms command with the server");
             return;
         }
 

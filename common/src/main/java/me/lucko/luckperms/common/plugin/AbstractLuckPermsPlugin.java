@@ -58,9 +58,10 @@ import me.lucko.luckperms.common.tasks.SyncTask;
 import me.lucko.luckperms.common.treeview.PermissionRegistry;
 import me.lucko.luckperms.common.verbose.VerboseHandler;
 import me.lucko.luckperms.common.webeditor.WebEditorSessionStore;
-
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.luckperms.api.LuckPerms;
-
 import okhttp3.OkHttpClient;
 
 import java.io.IOException;
@@ -69,13 +70,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.Month;
-import java.util.EnumSet;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public abstract class AbstractLuckPermsPlugin implements LuckPermsPlugin {
@@ -475,10 +470,9 @@ public abstract class AbstractLuckPermsPlugin implements LuckPermsPlugin {
     }
 
     public static String getPluginName() {
-        LocalDate date = LocalDate.now();
-        if (date.getMonth() == Month.APRIL && date.getDayOfMonth() == 1) {
-            return "LuckyPerms";
-        }
-        return "LuckPerms";
+        /*TextComponent.Builder name = Component.text().append(Component.text("Univ", NamedTextColor.AQUA))
+                .append(Component.text("erse", NamedTextColor.YELLOW))
+                .append(Component.text("Perms", NamedTextColor.DARK_GREEN));*/
+        return "UniversePerms";
     }
 }
